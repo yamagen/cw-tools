@@ -1,0 +1,449 @@
+#define _POSIX_C_SOURCE 200809L
+
+#include "common.h"
+
+#include <errno.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define PAIR_SEP '\x1f'
+
+struct uid_array {
+    const char **item;
+    size_t len;
+    size_t cap;
+};
+
+struct node {
+    char *key;
+    size_t count;
+    size_t df;
+    const char *last_unit;
+    struct uid_array uid;
+    struct node *next;
+};
+
+struct table {
+    struct node **bucket;
+    size_t size;
+    size_t len;
+};
+
+static const char *progname = "cw-tools";
+
+static void die(const char *message)
+{
+    fprintf(stderr, "%s: %s\n", progname, message);
+    exit(EXIT_FAILURE);
+}
+
+static void die_errno(const char *path)
+{
+    fprintf(stderr, "%s: %s: %s\n", progname, path, strerror(errno));
+    exit(EXIT_FAILURE);
+}
+
+static void *xmalloc(size_t size)
+{
+    void *p = malloc(size);
+    if (p == NULL)
+        die("out of memory");
+    return p;
+}
+
+static void *xcalloc(size_t n, size_t size)
+{
+    void *p = calloc(n, size);
+    if (p == NULL)
+        die("out of memory");
+    return p;
+}
+
+static void *xrealloc(void *ptr, size_t size)
+{
+    void *p = realloc(ptr, size);
+    if (p == NULL)
+        die("out of memory");
+    return p;
+}
+
+static char *xstrdup(const char *s)
+{
+    char *p = strdup(s);
+    if (p == NULL)
+        die("out of memory");
+    return p;
+}
+
+static size_t hash_string(const char *s)
+{
+    size_t h = 1469598103934665603ULL;
+
+    while (*s != '\0') {
+        h ^= (unsigned char)*s++;
+        h *= 1099511628211ULL;
+    }
+    return h;
+}
+
+static void table_grow(struct table *table)
+{
+    size_t new_size = table->size == 0 ? 1024 : table->size * 2;
+    struct node **new_bucket = xcalloc(new_size, sizeof(*new_bucket));
+
+    for (size_t i = 0; i < table->size; i++) {
+        struct node *node = table->bucket[i];
+
+        while (node != NULL) {
+            struct node *next = node->next;
+            size_t h = hash_string(node->key) % new_size;
+
+            node->next = new_bucket[h];
+            new_bucket[h] = node;
+            node = next;
+        }
+    }
+
+    free(table->bucket);
+    table->bucket = new_bucket;
+    table->size = new_size;
+}
+
+static struct node *table_get(struct table *table, const char *key,
+                              bool create)
+{
+    if (table->size == 0)
+        table_grow(table);
+
+    size_t h = hash_string(key) % table->size;
+
+    for (struct node *node = table->bucket[h];
+         node != NULL;
+         node = node->next) {
+        if (strcmp(node->key, key) == 0)
+            return node;
+    }
+
+    if (!create)
+        return NULL;
+
+    struct node *node = xcalloc(1, sizeof(*node));
+    node->key = xstrdup(key);
+    node->next = table->bucket[h];
+    table->bucket[h] = node;
+    table->len++;
+
+    if (table->len > table->size * 3 / 4)
+        table_grow(table);
+
+    return node;
+}
+
+static void table_free(struct table *table)
+{
+    for (size_t i = 0; i < table->size; i++) {
+        struct node *node = table->bucket[i];
+
+        while (node != NULL) {
+            struct node *next = node->next;
+            free(node->uid.item);
+            free(node->key);
+            free(node);
+            node = next;
+        }
+    }
+
+    free(table->bucket);
+    memset(table, 0, sizeof(*table));
+}
+
+static void uid_append(struct uid_array *uid, const char *unit)
+{
+    if (uid->len == uid->cap) {
+        size_t new_cap = uid->cap == 0 ? 8 : uid->cap * 2;
+        uid->item = xrealloc(uid->item, new_cap * sizeof(*uid->item));
+        uid->cap = new_cap;
+    }
+    uid->item[uid->len++] = unit;
+}
+
+static void touch(struct node *node, const char *unit, bool keep_uid)
+{
+    node->count++;
+
+    if (node->last_unit == NULL || strcmp(node->last_unit, unit) != 0) {
+        node->df++;
+        node->last_unit = unit;
+    }
+
+    if (keep_uid)
+        uid_append(&node->uid, unit);
+}
+
+static char *make_pair_key(const char *left, const char *right)
+{
+    size_t left_len = strlen(left);
+    size_t right_len = strlen(right);
+    char *key = xmalloc(left_len + right_len + 2);
+
+    memcpy(key, left, left_len);
+    key[left_len] = PAIR_SEP;
+    memcpy(key + left_len + 1, right, right_len + 1);
+    return key;
+}
+
+static void process_line(char *line, size_t line_number, const char *source,
+                         struct table *units, struct table *terms,
+                         struct table *pairs)
+{
+    char *saveptr = NULL;
+    char *unit = strtok_r(line, " \t\r\n", &saveptr);
+
+    if (unit == NULL || unit[0] == '#')
+        return;
+
+    char *left = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *right = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *extra = strtok_r(NULL, " \t\r\n", &saveptr);
+
+    if (left == NULL || right == NULL || extra != NULL) {
+        fprintf(stderr,
+                "%s: %s:%zu: expected: unit_id token1 token2\n",
+                progname, source, line_number);
+        exit(EXIT_FAILURE);
+    }
+
+    struct node *unit_node = table_get(units, unit, true);
+    const char *unit_key = unit_node->key;
+
+    touch(table_get(terms, left, true), unit_key, false);
+    touch(table_get(terms, right, true), unit_key, false);
+
+    char *pair_key = make_pair_key(left, right);
+    touch(table_get(pairs, pair_key, true), unit_key, true);
+    free(pair_key);
+}
+
+static void process_stream(FILE *stream, const char *source,
+                           struct table *units, struct table *terms,
+                           struct table *pairs)
+{
+    char *line = NULL;
+    size_t capacity = 0;
+    size_t line_number = 0;
+
+    while (getline(&line, &capacity, stream) != -1) {
+        line_number++;
+        process_line(line, line_number, source, units, terms, pairs);
+    }
+
+    if (ferror(stream)) {
+        free(line);
+        die_errno(source);
+    }
+    free(line);
+}
+
+static int compare_node_ptr(const void *a, const void *b)
+{
+    const struct node *left = *(const struct node *const *)a;
+    const struct node *right = *(const struct node *const *)b;
+    return strcmp(left->key, right->key);
+}
+
+static void copy_tokens(CwtCorpusStats *stats, struct table *terms,
+                        size_t num_units)
+{
+    stats->tokens = xcalloc(terms->len, sizeof(*stats->tokens));
+
+    for (size_t i = 0; i < terms->size; i++) {
+        for (struct node *node = terms->bucket[i];
+             node != NULL;
+             node = node->next) {
+            CwtTokenStat *token = &stats->tokens[stats->token_count++];
+            token->token = xstrdup(node->key);
+            token->df = node->df;
+            token->idf = log((double)num_units / (double)node->df);
+        }
+    }
+}
+
+static void copy_pair_uids(CwtStringList *dest, const struct uid_array *src)
+{
+    if (src->len == 0)
+        return;
+
+    dest->items = xcalloc(src->len, sizeof(*dest->items));
+    dest->len = src->len;
+    dest->cap = src->len;
+
+    for (size_t i = 0; i < src->len; i++)
+        dest->items[i] = xstrdup(src->item[i]);
+}
+
+static void copy_pairs(CwtCorpusStats *stats, struct table *pairs,
+                       struct table *terms, size_t num_units)
+{
+    if (pairs->len == 0)
+        return;
+
+    struct node **array = xmalloc(pairs->len * sizeof(*array));
+    size_t k = 0;
+
+    for (size_t i = 0; i < pairs->size; i++) {
+        for (struct node *node = pairs->bucket[i];
+             node != NULL;
+             node = node->next) {
+            array[k++] = node;
+        }
+    }
+    qsort(array, pairs->len, sizeof(*array), compare_node_ptr);
+
+    stats->pairs = xcalloc(pairs->len, sizeof(*stats->pairs));
+
+    for (size_t i = 0; i < pairs->len; i++) {
+        struct node *pair_node = array[i];
+        char *sep = strchr(pair_node->key, PAIR_SEP);
+
+        if (sep == NULL)
+            die("internal pair-key error");
+
+        *sep = '\0';
+        const char *left = pair_node->key;
+        const char *right = sep + 1;
+        struct node *left_term = table_get(terms, left, false);
+        struct node *right_term = table_get(terms, right, false);
+
+        if (left_term == NULL || right_term == NULL)
+            die("internal term-table error");
+
+        CwtPairStat *pair = &stats->pairs[stats->pair_count++];
+        pair->token1 = xstrdup(left);
+        pair->token2 = xstrdup(right);
+        pair->ctf = pair_node->count;
+        pair->cdf = pair_node->df;
+        pair->df1 = left_term->df;
+        pair->idf1 = log((double)num_units / (double)left_term->df);
+        pair->df2 = right_term->df;
+        pair->idf2 = log((double)num_units / (double)right_term->df);
+        copy_pair_uids(&pair->unit_ids, &pair_node->uid);
+
+        *sep = PAIR_SEP;
+    }
+
+    free(array);
+}
+
+void cwt_stats_init(CwtCorpusStats *stats)
+{
+    memset(stats, 0, sizeof(*stats));
+}
+
+int cwt_stats_read(FILE *stream, CwtCorpusStats *stats,
+                   const char *program_name)
+{
+    struct table units = {0};
+    struct table terms = {0};
+    struct table pairs = {0};
+
+    progname = program_name != NULL ? program_name : "cw-tools";
+    process_stream(stream, "-", &units, &terms, &pairs);
+
+    stats->unit_count = units.len;
+    if (units.len != 0) {
+        copy_tokens(stats, &terms, units.len);
+        copy_pairs(stats, &pairs, &terms, units.len);
+    }
+
+    table_free(&pairs);
+    table_free(&terms);
+    table_free(&units);
+    return 0;
+}
+
+void cwt_stats_free(CwtCorpusStats *stats)
+{
+    for (size_t i = 0; i < stats->token_count; i++)
+        free(stats->tokens[i].token);
+    free(stats->tokens);
+
+    for (size_t i = 0; i < stats->pair_count; i++) {
+        CwtPairStat *pair = &stats->pairs[i];
+        free(pair->token1);
+        free(pair->token2);
+        for (size_t j = 0; j < pair->unit_ids.len; j++)
+            free(pair->unit_ids.items[j]);
+        free(pair->unit_ids.items);
+    }
+    free(stats->pairs);
+    cwt_stats_init(stats);
+}
+
+const CwtTokenStat *cwt_stats_find_token(const CwtCorpusStats *stats,
+                                         const char *token)
+{
+    for (size_t i = 0; i < stats->token_count; i++) {
+        if (strcmp(stats->tokens[i].token, token) == 0)
+            return &stats->tokens[i];
+    }
+    return NULL;
+}
+
+void cwt_token_parse(const char *token, CwtTokenFields *fields)
+{
+    const char *start = token;
+    const char *p = token;
+    size_t n = 0;
+
+    memset(fields, 0, sizeof(*fields));
+
+    while (n + 1 < CWT_TOKEN_FIELD_MAX && *p != '\0') {
+        if (*p == '/') {
+            fields->field[n].ptr = start;
+            fields->field[n].len = (size_t)(p - start);
+            n++;
+            start = p + 1;
+        }
+        p++;
+    }
+
+    fields->field[n].ptr = start;
+    fields->field[n].len = strlen(start);
+    fields->count = n + 1;
+}
+
+int cwt_token_field_equals(const char *token, size_t field_number,
+                           const char *value)
+{
+    CwtTokenFields fields;
+
+    if (field_number == 0 || field_number > CWT_TOKEN_FIELD_MAX)
+        return 0;
+
+    cwt_token_parse(token, &fields);
+    if (field_number > fields.count)
+        return 0;
+
+    CwtStringView field = fields.field[field_number - 1];
+    size_t value_len = strlen(value);
+    return field.len == value_len && memcmp(field.ptr, value, value_len) == 0;
+}
+
+int cwt_token_field_write(FILE *stream, const char *token,
+                          size_t field_number)
+{
+    CwtTokenFields fields;
+
+    if (field_number == 0 || field_number > CWT_TOKEN_FIELD_MAX)
+        return -1;
+
+    cwt_token_parse(token, &fields);
+    if (field_number > fields.count)
+        return -1;
+
+    CwtStringView field = fields.field[field_number - 1];
+    return fwrite(field.ptr, 1, field.len, stream) == field.len ? 0 : -1;
+}

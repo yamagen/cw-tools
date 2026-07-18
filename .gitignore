@@ -1,0 +1,11 @@
+# Executables
+/pair
+/cw
+/cm
+/emit
+
+# Object files
+/src/*.o
+
+# Working and archived files
+/tmp/

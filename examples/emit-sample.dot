@@ -1,0 +1,12 @@
+graph "G" {
+  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst"];
+  node [shape="plaintext"];
+  edge [penwidth=1];
+
+  "ちり/散る/動詞/ちり" [label="ちり", df=17, idf=4.179, tooltip="df=17; idf=4.179"];
+  "春/春/名詞/はる" [label="春", df=42, idf=3.28, tooltip="df=42; idf=3.28"];
+  "桜/桜/名詞/さくら" [label="桜", df=8, idf=4.93357424796, tooltip="df=8; idf=4.93357424796"];
+
+  "ちり/散る/動詞/ちり" -- "桜/桜/名詞/さくら" [label="2", ctf=2, cdf=2, cw=7.2874543462720025, z=2.582390082806497, unit_ids="10064,10077", tooltip="ctf=2; cdf=2; cw=7.2874543462720025; z=2.582390082806497; unit_ids=10064,10077"];
+  "春/春/名詞/はる" -- "桜/桜/名詞/さくら" [label="1", ctf=1, cdf=1, cw=4.0199999999999996, z=0.39000000000000001, unit_ids="10012", tooltip="ctf=1; cdf=1; cw=4.0199999999999996; z=0.39000000000000001; unit_ids=10012"];
+}

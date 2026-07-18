@@ -1,0 +1,25 @@
+{
+  "format": "dot",
+  "filters": {
+    "min_cw": null,
+    "min_z": null
+  },
+  "dot": {
+    "graph_name": "G",
+    "directed": false,
+    "charset": "UTF-8",
+    "overlap": false,
+    "outputorder": "edgesfirst"
+  },
+  "node": {
+    "shape": "circle",
+    "--shape": "oval",
+    "-shape": "plaintext",
+    "label_field": 1
+  },
+  "edge": {
+    "label": "ctf",
+    "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
+    "penwidth": 1.0
+  }
+}
