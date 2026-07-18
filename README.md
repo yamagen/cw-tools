@@ -78,7 +78,7 @@ awk -f tests/hachidaishu2pair.awk \
 
 ## Related repositories
 
-- [Hachidaishu Part-of-Speech Dataset](https://doi.org/10.5281/zenodo.13940187)
+- [Hachidaishu Part-of-Speech Dataset](https://doi.org/10.5281/zenodo.13940187)  
   [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13940187.svg)](https://doi.org/10.5281/zenodo.13940187)
 
 ## License
