@@ -5,9 +5,9 @@ Last change: 2026/07/18-12:31:44
 Hilofumi Yamamoto, Ph.D.
 Institute of Science Tokyo
 
-## pair, idf, cw, cm, emit
+## pair, cw, cm, emit
 
-`cw-tools` is a collection of command-line utilities for pairwise text-data analysis. It includes `pair`, `idf`, `cw`, `cm`, and `emit`, which work together as small, composable Unix-style tools for generating pairs, calculating weights and measures, and exporting results in reusable formats.
+`cw-tools` is a collection of command-line utilities for pairwise text-data analysis. It includes `pair`, `cw`, `cm`, and `emit`, which work together as small, composable Unix-style tools for generating pairs, calculating weights and measures, and exporting results in reusable formats.
 
 The tools read unit-based token data from standard input or files. Each input line begins with a unit identifier, followed by tokens represented by one to four slash-separated fields:
 
@@ -33,7 +33,7 @@ unit_id surface/lemma/pos/reading ...
 A typical processing pipeline is:
 
 ```sh
-pair < input.txt | idf | cw | emit
+pair < input.txt | cw | emit
 ```
 
 ## Compile
