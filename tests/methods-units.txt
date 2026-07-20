@@ -1,0 +1,4 @@
+u1 K K A B
+u2 K A B
+u3 A B C
+u4 C D

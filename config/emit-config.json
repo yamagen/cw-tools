@@ -9,17 +9,27 @@
     "directed": false,
     "charset": "UTF-8",
     "overlap": false,
-    "outputorder": "edgesfirst"
+    "outputorder": "edgesfirst",
+    "fontname": "Noto Serif CJK JP",
+    "sep": "+8",
+    "pack": true,
+    "packmode": "graph",
+    "splines": "line"
   },
   "node": {
-    "shape": "circle",
-    "--shape": "oval",
-    "-shape": "plaintext",
-    "label_field": 1
+    "shape": "oval",
+    "fontname": "Noto Serif CJK JP",
+    "label_fields": [1],
+    "label_separator": "/",
+    "font_size_by": "fq",
+    "min_font_size": 7,
+    "max_font_size": 32
   },
   "edge": {
+    "fontname": "Noto Serif CJK JP",
     "label": "ctf",
     "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
-    "penwidth": 1.0
+    "penwidth": 1.0,
+    "length": 1.4
   }
 }

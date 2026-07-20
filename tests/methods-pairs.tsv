@@ -1,0 +1,10 @@
+u1	A	K	1	2
+u1	B	K	1	2
+u1	A	B	1	1
+u2	A	K	1	1
+u2	B	K	1	1
+u2	A	B	1	1
+u3	A	B	1	1
+u3	A	C	1	1
+u3	B	C	1	1
+u4	C	D	1	1

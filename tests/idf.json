@@ -1,0 +1,22 @@
+{
+  "format": "cw-tools/graph",
+  "version": 1,
+  "emit": {"config": "config/emit-config-idf.json", "output_format": "json", "label_fields": [1], "label_separator": "/", "font_size_by": "idf", "min_font_size": 7, "max_font_size": 32},
+  "filters": {
+    "min_cw": null,
+    "min_z": null
+  },
+  "counts": {"nodes": 4, "edges": 4},
+  "nodes": [
+    {"id": "A/a/X/g", "label": "A", "fields": ["A", "a", "X", "g"], "df": 3, "idf": 0, "fq": 3, "degree": 3, "font_size": 7},
+    {"id": "B/b/X/g", "label": "B", "fields": ["B", "b", "X", "g"], "df": 1, "idf": 1.09861228867, "fq": 2, "degree": 2, "font_size": 32},
+    {"id": "C/c/X/g", "label": "C", "fields": ["C", "c", "X", "g"], "df": 1, "idf": 1.09861228867, "fq": 1, "degree": 2, "font_size": 32},
+    {"id": "D/d/X/g", "label": "D", "fields": ["D", "d", "X", "g"], "df": 2, "idf": 0.405465108108, "fq": 4, "degree": 1, "font_size": 16.226756160693945}
+  ],
+  "edges": [
+    {"source": "A/a/X/g", "target": "B/b/X/g", "ctf": 1, "cdf": 1, "cw": 0, "z": -0.5, "unit_ids": ["u1"]},
+    {"source": "A/a/X/g", "target": "C/c/X/g", "ctf": 1, "cdf": 1, "cw": 0, "z": -0.5, "unit_ids": ["u1"]},
+    {"source": "A/a/X/g", "target": "D/d/X/g", "ctf": 2, "cdf": 2, "cw": 0, "z": -0.5, "unit_ids": ["u2", "u3"]},
+    {"source": "B/b/X/g", "target": "C/c/X/g", "ctf": 1, "cdf": 1, "cw": 1.0986122886681098, "z": 1.5, "unit_ids": ["u1"]}
+  ]
+}

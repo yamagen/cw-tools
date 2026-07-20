@@ -1,0 +1,12 @@
+graph "G" {
+  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst", fontname="Noto Serif CJK JP", sep="+8", pack=true, packmode="graph", splines="line"];
+  node [shape="oval", fontname="Noto Serif CJK JP"];
+  edge [penwidth="1", fontname="Noto Serif CJK JP", len="1.4"];
+
+  "春/春/名/はる" [label="春", fontsize="7", df=68, idf="2.79", fq=3, degree=1, tooltip="df=68; idf=2.79; fq=3; degree=1"];
+  "梅/梅/名/うめ" [label="梅", fontsize="23.666666666666664", df=22, idf="3.92", fq=5, degree=2, tooltip="df=22; idf=3.92; fq=5; degree=2"];
+  "鴬/鴬/名/うぐいす" [label="鴬", fontsize="32", df=23, idf="3.88", fq=6, degree=1, tooltip="df=23; idf=3.88; fq=6; degree=1"];
+
+  "梅/梅/名/うめ" -- "鴬/鴬/名/うぐいす" [label="2", ctf=2, cdf=2, cw="67.700000000000003", z="3.3599999999999999", unit_ids="1,2", tooltip="ctf=2; cdf=2; cw=67.700000000000003; z=3.3599999999999999; unit_ids=1,2"];
+  "梅/梅/名/うめ" -- "春/春/名/はる" [label="1", ctf=1, cdf=1, cw="20", z="1.2", unit_ids="3", tooltip="ctf=1; cdf=1; cw=20; z=1.2; unit_ids=3"];
+}

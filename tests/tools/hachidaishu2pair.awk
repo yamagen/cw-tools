@@ -32,6 +32,7 @@ NF == 0 {
 
         m = split(token[2], info, ":")
         pos = info[1]
+        sub(/-.*/, "", pos)  # ハ四-已 -> ハ四
         lemma = (m >= 2 && info[2] != "") ? info[2] : surface
 
         printf " %s/%s/%s/%s", surface, lemma, pos, reading

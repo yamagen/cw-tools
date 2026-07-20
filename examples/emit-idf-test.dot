@@ -1,0 +1,12 @@
+graph "G" {
+  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst"];
+  node [shape="oval"];
+  edge [penwidth=1];
+
+  "中間/中間/名/y" [label="中間", fontsize=19.5, df=10, idf=3, tooltip="df=10; idf=3"];
+  "助詞/助詞/助詞/x" [label="助詞", fontsize=7, df=100, idf=1, tooltip="df=100; idf=1"];
+  "稀語/稀語/名/z" [label="稀語", fontsize=32, df=1, idf=5, tooltip="df=1; idf=5"];
+
+  "助詞/助詞/助詞/x" -- "中間/中間/名/y" [label="1", ctf=1, cdf=1, cw=1, z=0, unit_ids="u1", tooltip="ctf=1; cdf=1; cw=1; z=0; unit_ids=u1"];
+  "中間/中間/名/y" -- "稀語/稀語/名/z" [label="1", ctf=1, cdf=1, cw=1, z=0, unit_ids="u2", tooltip="ctf=1; cdf=1; cw=1; z=0; unit_ids=u2"];
+}

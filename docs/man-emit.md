@@ -2,7 +2,7 @@
 
 ## NAME
 
-`emit` — filter precomputed co-occurrence edges and emit reusable JSON or Graphviz DOT
+`emit` — format line-oriented `cw` results as JSON, Graphviz DOT, Markdown, LaTeX, or HTML
 
 ## SYNOPSIS
 
@@ -12,143 +12,286 @@ emit [OPTION]... [FILE]
 
 ## DESCRIPTION
 
-`emit` reads the enriched pair table produced by [`cw`](./man-cw.md), applies display-oriented CW and Z thresholds, and writes either:
+`emit` reads the tab-separated edge table produced by [`cw`](./man-cw.md) and writes one of the following:
 
-- a reusable JSON graph dataset; or
-- a Graphviz DOT description for visualization.
+- a reusable JSON graph dataset;
+- a Graphviz DOT description;
+- a Markdown table;
+- a LaTeX table; or
+- an HTML table fragment.
 
-This manual describes `emit` version 0.2.0.
+This manual describes `emit` version 0.7.0.
 
-`emit` does not calculate or recalculate IDF, CW, or Z. Those values belong to the measurement stage implemented by `cw`. `emit` only decides which already calculated edges and incident nodes are included in an output representation.
+`emit` is a formatter. It does not calculate or recalculate IDF, CW, Z, CTF, CDF, or token frequency. Those values belong to the measurement stage implemented by `cw`.
 
-The normal behavior of `emit` is defined by `emit-config.json`. Command-line options are intended only for temporary deviations from that configuration.
+The normal display policy is read from `config/emit-config.json`. Command-line options are intended for temporary changes to output format or simple thresholds.
 
-With no file operand, `emit` reads from standard input. At most one input file may be specified.
+With no file operand, `emit` reads standard input. At most one input file may be specified.
 
 ## PLACE IN THE CW-TOOLS PIPELINE
 
-The current division of responsibilities is:
+The principal processing boundary is:
+
+```text
+pair -> cw -> grep / awk -> emit -> neato / dot / sfdp
+            line-oriented    graph-oriented
+
+pair -> cw -> grep / awk -> emit -T md / tex / html
+            line-oriented    publication table
+```
+
+The programs have distinct responsibilities:
 
 ```text
 pair
-    generate token pairs within units
+    enumerate complete-token pairs within units
+    preserve unit-level token frequencies
 
 cw
-    calculate global IDF
-    select units by key
-    calculate ctf and cdf
-    calculate CW
-    calculate Z within the selected CW distribution
-    retain unit identifiers
+    project complete tokens onto user-defined patterns
+    calculate global and local statistics
+    calculate CW and Z
+    write one result edge per line
 
-rbin
-    calculate descriptive statistics
-    inspect CW and Z distributions
-    produce histograms and distributional reports
+grep / awk
+    perform conditions decidable from one TSV row
+    retain or reject rows without changing their measurements
 
 emit
-    apply display thresholds
-    retain incident nodes
-    emit JSON or Graphviz DOT
+    construct the displayed node and edge set for graph output
+    derive display values such as degree and font size
+    select and label columns for table output
+    translate configuration into safe JSON, DOT, Markdown, LaTeX, or HTML
+
+neato / dot / sfdp
+    calculate geometric layout
+    render SVG, PDF, PNG, or another device format
 ```
 
-In a typical pipeline:
+A typical pipeline is:
 
 ```sh
-pair < data.txt \
-  | cw -k '^桜$' \
-  | emit > sakura.dot
+grep '^1' tests/data/hachidaishu-pair.txt \
+  | ./pair \
+  | ./cw -p 2,3 -k '^梅/名$' -M 16 \
+  | awk -F '\t' '$12 >= 2' \
+  | ./emit \
+  | neato -Tsvg > ume.svg
 ```
 
-The same calculated table can be serialized as JSON without rerunning the measurement stage:
-
-```sh
-pair < data.txt \
-  | cw -k '^桜$' \
-  | emit -T json > sakura.json
-```
+The research conditions are visible in the pipeline. Ordinary row filtering remains ordinary Unix processing; Graphviz syntax, table syntax, quoting, and target-specific escaping are handled by `emit`.
 
 ## INPUT
 
-The expected input is the tab-separated output of `cw` version 0.4.0 or later:
+### Current format
+
+The current input is the tab-separated output of `cw` 0.7.0 or later:
+
+```text
+token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...
+```
+
+| Column | Name | Meaning |
+| ---: | --- | --- |
+| 1 | `token1` | complete representative token for the first pattern |
+| 2 | `token2` | complete representative token for the second pattern |
+| 3 | `ctf` | local pair occurrence count supplied by `cw` |
+| 4 | `cdf` | number of selected units containing the pair |
+| 5 | `df1` | global unit frequency of pattern 1 |
+| 6 | `idf1` | global IDF of pattern 1 |
+| 7 | `fq1` | local frequency of pattern 1, or `-` when unavailable |
+| 8 | `df2` | global unit frequency of pattern 2 |
+| 9 | `idf2` | global IDF of pattern 2 |
+| 10 | `fq2` | local frequency of pattern 2, or `-` when unavailable |
+| 11 | `cw` | precomputed co-occurrence weight |
+| 12 | `z` | precomputed Z value in the selected CW distribution |
+| 13... | `unit_id...` | one unit identifier for every occurrence counted by `ctf` |
+
+### Legacy format
+
+The earlier ten-column format without `fq1` and `fq2` is also accepted:
 
 ```text
 token1 token2 ctf cdf df1 idf1 df2 idf2 cw z unit_id...
 ```
 
-The first ten fields are fixed. One trailing `unit_id` field is required for every occurrence counted by `ctf`.
+When legacy input is used, node frequency `fq` is unavailable. Consequently:
 
-| Field        | Meaning                                                 |
-| ------------ | ------------------------------------------------------- |
-| `token1`     | complete first token                                    |
-| `token2`     | complete second token                                   |
-| `ctf`        | total number of pair occurrences in the selected units  |
-| `cdf`        | number of selected units containing the pair            |
-| `df1`        | global document frequency of `token1`                   |
-| `idf1`       | global IDF of `token1`                                  |
-| `df2`        | global document frequency of `token2`                   |
-| `idf2`       | global IDF of `token2`                                  |
-| `cw`         | precomputed co-occurrence weight                        |
-| `z`          | precomputed Z value within the selected CW distribution |
-| `unit_id...` | one unit identifier for every pair occurrence           |
+```json
+"font_size_by": "fq"
+```
+
+causes an error. Use current `pair` and `cw` output, or select `idf` or `degree` for font sizing.
+
+### Tabs, comments, and validation
+
+Fields must be separated by literal tab characters. Empty lines and lines beginning with `#` are ignored.
+
+`emit` verifies, among other things, that:
+
+- numeric fields are syntactically valid and finite;
+- `ctf` is greater than zero;
+- `cdf` does not exceed `ctf`;
+- token fields and unit identifiers are nonempty;
+- the number of trailing unit identifiers agrees with `ctf`;
+- repeated appearances of a node carry consistent `df`, `idf`, and available `fq` values.
+
+`emit` does not recalculate the supplied measurements.
+
+## COMPLETE TOKEN, PATTERN, AND LABEL
+
+`cw` has already decided pattern identity before `emit` receives the table. The token strings retained in columns 1 and 2 are complete representative tokens with up to four slash-separated fields:
+
+```text
+f1/f2/f3/f4
+```
+
+The complete token is used as the DOT and JSON node identifier. The visible node label is independently constructed from `node.label_fields`.
 
 For example:
 
-```text
-ちり/散る/ラ四-用/ちり	桜/桜/名/さくら	2	2	17	4.17950237056	8	4.93357424796	7.2874543462720025	2.582390082806497	10064	10077
+```json
+"label_fields": [1, 4],
+"label_separator": "/"
 ```
 
-### Tab separation
-
-Input fields must be separated by literal tab characters. Unlike `pair`, `emit` does not split records on general whitespace.
-
-Each non-comment input line must contain at least ten tab-separated fields.
-
-### Comments and blank lines
-
-Empty lines are ignored. A line whose first character is `#` is also ignored.
-
-### Validation
-
-`emit` checks the following conditions:
-
-- `ctf`, `cdf`, `df1`, and `df2` must be valid nonnegative integers;
-- `ctf` must be greater than zero;
-- `cdf` must not exceed `ctf`;
-- `idf1`, `idf2`, `cw`, and `z` must be finite numbers;
-- `token1` and `token2` must not be empty;
-- every `unit_id` must be nonempty;
-- the number of trailing `unit_id` fields must equal `ctf`;
-- repeated occurrences of the same token must carry consistent `df` and `idf` values.
-
-`emit` currently trusts the supplied `cdf` value after checking only that `cdf <= ctf`; it does not independently recount distinct unit identifiers.
-
-### Tokens
-
-A token normally contains one to four slash-separated fields:
+turns:
 
 ```text
-surface
-surface/lemma
-surface/lemma/field3
-surface/lemma/field3/field4
+桜/桜/名/さくら
 ```
 
-The complete token string is used as the node identifier. Consequently, tokens sharing the same surface form but differing in lemma, grammatical field, or gloss remain distinct nodes.
+into the visible label:
+
+```text
+桜/さくら
+```
+
+The program does not assume that any field is a surface form, lemma, part of speech, gloss, semantic code, or another predetermined category.
+
+## PRUNING BEFORE EMIT
+
+### The line/graph boundary
+
+Before `emit`, every `cw` result is one TSV row. A condition that can be decided from that row should normally be expressed with `grep`, `grep -v`, or `awk`, rather than added as a new special-purpose `emit` option.
+
+This preserves a simple rule:
+
+```text
+row pruning
+    grep / grep -v / awk
+
+graph-structural processing
+    emit
+```
+
+The row filter does not alter IDF, CW, or Z. It only decides which already measured edges are passed to the graph formatter.
+
+### Filter by CW
+
+CW is column 11 in the current format:
+
+```sh
+./cw ... \
+  | awk -F '\t' '$11 >= 10' \
+  | ./emit
+```
+
+### Filter by Z
+
+Z is column 12:
+
+```sh
+./cw ... \
+  | awk -F '\t' '$12 >= 2' \
+  | ./emit
+```
+
+### Combine numerical conditions
+
+```sh
+./cw ... \
+  | awk -F '\t' '$3 >= 2 && $11 >= 10 && $12 >= 2' \
+  | ./emit
+```
+
+This retains rows whose CTF is at least 2, CW is at least 10, and Z is at least 2.
+
+### Exclude a pattern from either endpoint
+
+When the third complete-token field records a category such as `格助`, a precise field-aware filter can be written in `awk`:
+
+```sh
+./cw ... \
+  | awk -F '\t' '$1 !~ /\/格助\// && $2 !~ /\/格助\//' \
+  | ./emit
+```
+
+A general `grep -v` is convenient:
+
+```sh
+./cw ... | grep -v '/格助/' | ./emit
+```
+
+but it searches the complete line, including both endpoints and trailing unit identifiers. `awk` is safer when the target must be restricted to columns 1 and 2.
+
+### Select one endpoint
+
+```sh
+./cw ... \
+  | awk -F '\t' '$1 ~ /^梅\// || $2 ~ /^梅\//' \
+  | ./emit
+```
+
+### Save the measured table before experimenting
+
+```sh
+./cw -p 2,3 -k '^梅/名$' -M 16 > ume-cw.tsv
+
+awk -F '\t' '$12 >= 1' ume-cw.tsv | ./emit > ume-z1.dot
+awk -F '\t' '$12 >= 2' ume-cw.tsv | ./emit > ume-z2.dot
+```
+
+The expensive measurement stage is not repeated, and every display condition remains inspectable.
+
+### `-W` and `-Z` as conveniences
+
+`emit` retains `-W` and `-Z` as concise forms for simple thresholds:
+
+```sh
+./emit -W 10
+./emit -Z 2
+```
+
+Conceptually, these are equivalent to row filters on columns 11 and 12. They are convenient for interactive use, while `awk` is more expressive for compound research conditions.
+
+### Graph-structural pruning
+
+Conditions requiring knowledge of the complete displayed graph cannot be decided from one input row. Examples include:
+
+- degree thresholds;
+- retaining the component containing a designated node;
+- removing small disconnected islands;
+- selecting the largest connected component;
+- iterative k-core pruning.
+
+Such operations belong conceptually after graph construction and therefore in `emit` or a later graph-processing program. Version 0.7.0 calculates displayed degree for font sizing but does not yet implement structural pruning options.
 
 ## CONFIGURATION
 
-By default, `emit` reads:
+The default configuration path is:
 
 ```text
-emit-config.json
+config/emit-config.json
 ```
 
-from the current working directory.
+Use another file with:
 
-A configuration file is required by version 0.2.0. If the default file does not exist or cannot be parsed, `emit` exits with failure. Use `-c FILE` to select a different configuration file.
+```sh
+emit -c configs/publication.json
+```
 
-The recommended default configuration is:
+A complete configuration is:
 
 ```json
 {
@@ -162,47 +305,59 @@ The recommended default configuration is:
     "directed": false,
     "charset": "UTF-8",
     "overlap": false,
-    "outputorder": "edgesfirst"
+    "outputorder": "edgesfirst",
+    "fontname": "Noto Serif CJK JP",
+    "sep": "+8",
+    "pack": true,
+    "packmode": "graph",
+    "splines": "line"
   },
   "node": {
-    "shape": "plaintext",
-    "label_field": 1
+    "shape": "oval",
+    "fontname": "Noto Serif CJK JP",
+    "label_fields": [1],
+    "label_separator": "/",
+    "font_size_by": "fq",
+    "min_font_size": 7,
+    "max_font_size": 32
   },
   "edge": {
+    "fontname": "Noto Serif CJK JP",
     "label": "ctf",
     "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
-    "penwidth": 1.0
+    "penwidth": 1.0,
+    "length": 1.4
+  },
+  "table": {
+    "columns": ["token1", "token2", "ctf", "cdf", "cw", "z"],
+    "headers": ["Pattern 1", "Pattern 2", "CTF", "CDF", "CW", "Z"],
+    "label_fields": [1],
+    "label_separator": "/",
+    "precision": 6,
+    "unit_separator": ", ",
+    "caption": null,
+    "label": null
   }
 }
 ```
 
-The file must be valid JSON. Comments and trailing commas are not accepted.
-
-Unknown keys are ignored. This allows later versions to add configuration entries without making earlier parsers reject the entire file, but a misspelled recognized key may therefore silently leave its previous value unchanged.
+The file must be valid JSON. Comments and trailing commas are not accepted. Unknown keys are currently ignored.
 
 ### Precedence
 
 Effective settings are determined in this order:
 
 ```text
-internal initial values
+internal defaults
         ↓
-emit-config.json, or the file named by -c
+configuration file
         ↓
-command-line options explicitly supplied
+explicit command-line overrides
 ```
 
-The command line does not replace the entire configuration. It overrides only the specified value.
+A command-line option changes only the named setting.
 
-For example:
-
-```sh
-emit -Z 2
-```
-
-uses every value from the configuration file except `filters.min_z`, which is temporarily replaced by `2`.
-
-### `format`
+## OUTPUT FORMAT
 
 ```json
 "format": "dot"
@@ -210,86 +365,129 @@ uses every value from the configuration file except `filters.min_z`, which is te
 
 Accepted values are:
 
-| Value    | Output              |
-| -------- | ------------------- |
-| `"dot"`  | Graphviz DOT        |
-| `"json"` | cw-tools graph JSON |
+| Value | Output |
+| --- | --- |
+| `"dot"` | Graphviz DOT |
+| `"json"` | reusable cw-tools graph JSON |
+| `"md"` | Markdown table |
+| `"tex"` | LaTeX `table` and `tabular` fragment |
+| `"html"` | HTML `<table>` fragment |
 
-The corresponding temporary command-line override is:
+The aliases `markdown` and `latex` are also accepted.
+
+Temporarily override the setting with:
 
 ```sh
 emit -T json
 emit -T dot
+emit -T md
+emit -T tex
+emit -T html
 ```
 
-### `filters`
+## TABLE OUTPUT
+
+### `emit-table.config`
+
+Table output is controlled by an ordinary JSON configuration file. The filename may be `config/emit-table.config`; the extension does not affect parsing.
+
+A practical configuration is:
 
 ```json
-"filters": {
-  "min_cw": null,
-  "min_z": 1
+{
+  "format": "md",
+  "filters": {
+    "min_cw": null,
+    "min_z": null
+  },
+  "table": {
+    "columns": [
+      "token1",
+      "token2",
+      "ctf",
+      "cdf",
+      "idf1",
+      "idf2",
+      "cw",
+      "z",
+      "unit_ids"
+    ],
+    "headers": [
+      "Pattern 1",
+      "Pattern 2",
+      "CTF",
+      "CDF",
+      "IDF 1",
+      "IDF 2",
+      "CW",
+      "Z",
+      "Unit IDs"
+    ],
+    "label_fields": [1, 4],
+    "label_separator": "/",
+    "precision": 6,
+    "unit_separator": ", ",
+    "caption": "CW results",
+    "label": "tab:cw-results"
+  }
 }
 ```
 
-Each threshold may be either a finite JSON number or `null`.
+Use it as follows:
 
-| Key      | Meaning                                                        |
-| -------- | -------------------------------------------------------------- |
-| `min_cw` | retain edges whose `cw` is greater than or equal to this value |
-| `min_z`  | retain edges whose `z` is greater than or equal to this value  |
-| `null`   | do not apply that threshold                                    |
+```sh
+./cw ... > result.tsv
 
-When both thresholds are numbers, an edge must satisfy both conditions:
-
-$$
-cw \geq \operatorname{min\_cw}
-\quad\text{and}\quad
-z \geq \operatorname{min\_z}
-$$
-
-Filtering is inclusive. An edge exactly equal to the threshold is retained.
-
-Only nodes incident to retained edges are emitted. If no edge survives, both output formats contain an empty graph.
-
-### `dot`
-
-The `dot` object controls the Graphviz graph declaration and graph-level attributes.
-
-```json
-"dot": {
-  "graph_name": "G",
-  "directed": false,
-  "charset": "UTF-8",
-  "overlap": false,
-  "outputorder": "edgesfirst"
-}
+./emit -c config/emit-table.config result.tsv > result.md
+./emit -c config/emit-table.config -T tex result.tsv > result.tex
+./emit -c config/emit-table.config -T html result.tsv > result.html
 ```
 
-| Key           | Type    | Current effect                                    |
-| ------------- | ------- | ------------------------------------------------- |
-| `graph_name`  | string  | quoted graph name                                 |
-| `directed`    | boolean | selects `graph`/`--` or `digraph`/`->`            |
-| `charset`     | string  | writes the Graphviz `charset` graph attribute     |
-| `overlap`     | boolean | writes the Graphviz `overlap` graph attribute     |
-| `outputorder` | string  | writes the Graphviz `outputorder` graph attribute |
+The same selected rows and column policy are therefore reused across all three publication formats.
 
-Setting `directed` changes only the DOT syntax. It does not reinterpret or reorder pairs supplied by `cw`.
+### `table.columns`
 
-### `node`
+`columns` determines both inclusion and order. Accepted names are:
+
+| Name | Value |
+| --- | --- |
+| `token1` | token 1 rendered through `table.label_fields` |
+| `token2` | token 2 rendered through `table.label_fields` |
+| `raw_token1` | complete token 1 exactly as supplied by `cw` |
+| `raw_token2` | complete token 2 exactly as supplied by `cw` |
+| `ctf` | local pair occurrence count |
+| `cdf` | selected-unit pair frequency |
+| `df1`, `df2` | global unit frequencies |
+| `idf1`, `idf2` | global IDF values |
+| `fq1`, `fq2` | local token frequencies, or `NA` for legacy input |
+| `cw` | CW value |
+| `z` | Z value |
+| `unit_ids` | joined trailing unit identifiers |
+
+Duplicate columns are rejected. The default, when no `table` object is supplied, is:
 
 ```json
-"node": {
-  "shape": "plaintext",
-  "label_field": 1
-}
+["token1", "token2", "ctf", "cdf", "cw", "z", "unit_ids"]
 ```
 
-| Key           | Type        | Meaning                                                    |
-| ------------- | ----------- | ---------------------------------------------------------- |
-| `shape`       | string      | Graphviz node `shape` attribute                            |
-| `label_field` | integer 1–4 | slash-separated token field used as the visible node label |
+### `table.headers`
 
-The complete token remains the node ID. Only the visible label changes.
+`headers` is optional. When supplied, it must contain exactly one string for every selected column. When omitted, `emit` supplies short English headings.
+
+This permits publication-specific terminology without changing the computed data:
+
+```json
+"headers": ["語1", "語2", "頻度", "CW", "Z"]
+```
+
+### Token labels
+
+The table's `token1` and `token2` columns are constructed independently from DOT node labels:
+
+```json
+"label_fields": [1, 4],
+"label_separator": "/"
+```
 
 For example:
 
@@ -297,664 +495,560 @@ For example:
 桜/桜/名/さくら
 ```
 
-with:
-
-```json
-"label_field": 1
-```
-
-is emitted as:
-
-```dot
-"桜/桜/名/さくら" [label="桜", ...];
-```
-
-If the requested field does not exist or is empty, `emit` falls back to field 1.
-
-### `edge`
-
-```json
-"edge": {
-  "label": "ctf",
-  "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
-  "penwidth": 1.0
-}
-```
-
-#### `edge.label`
-
-Accepted values are:
-
-| Value    | Visible edge label                              |
-| -------- | ----------------------------------------------- |
-| `"none"` | no `label` attribute                            |
-| `"ctf"`  | pair occurrence count                           |
-| `"cdf"`  | distinct-unit count                             |
-| `"cw"`   | CW value, formatted with six significant digits |
-| `"z"`    | Z value, formatted with six significant digits  |
-
-The full-precision CW and Z values remain separate DOT attributes even when the visible label is shortened.
-
-#### `edge.tooltip`
-
-`tooltip` is an array containing any of:
+is written as:
 
 ```text
-ctf
-cdf
-cw
-z
-unit_ids
+桜/さくら
 ```
 
-The selected fields are joined in one Graphviz tooltip, separated by semicolons.
+Select `raw_token1` or `raw_token2` when the complete representative token must appear in the table.
 
-An empty array disables the edge tooltip:
+### Numeric precision
 
 ```json
-"tooltip": []
+"precision": 6
 ```
 
-#### `edge.penwidth`
+`precision` is the number of significant digits used for IDF, CW, and Z. It must be an integer from 1 through 17. Integer counts are never rounded.
 
-`penwidth` must be greater than zero. Version 0.2.0 applies one fixed width to every edge:
-
-```dot
-edge [penwidth=1];
-```
-
-Variable line widths based on CW or Z are not yet implemented.
-
-## OPTIONS
-
-### `-c FILE`, `--config FILE`
-
-Read `FILE` instead of the default `emit-config.json`.
-
-```sh
-emit -c configs/publication.json
-```
-
-The path actually used is recorded in JSON output under `emit.config`.
-
-### `-T FORMAT`, `--format FORMAT`
-
-Temporarily override the configured output format.
-
-`FORMAT` must be `json` or `dot`.
-
-```sh
-emit -T json
-```
-
-### `-W VALUE`, `--min-cw VALUE`
-
-Temporarily set the minimum retained CW value.
-
-```sh
-emit -W 5
-```
-
-`VALUE` must be a finite number. Negative values are accepted.
-
-### `-Z VALUE`, `--min-z VALUE`
-
-Temporarily set the minimum retained Z value.
-
-```sh
-emit -Z 1
-```
-
-`VALUE` must be a finite number. Negative values are accepted.
-
-### `-h`, `--help`
-
-Display a short usage summary and exit successfully.
-
-### `-v`, `--version`
-
-Display the program name and version:
-
-```text
-emit 0.2.0
-```
-
-## FILTERING IS A DISPLAY OPERATION
-
-The thresholds in `emit` do not define the population used to calculate IDF, CW, or Z.
-
-The processing order is:
-
-```text
-cw calculates every selected pair
-        ↓
-cw calculates Z from the complete selected CW distribution
-        ↓
-emit receives the completed table
-        ↓
-emit hides edges below display thresholds
-```
-
-Thus:
-
-```sh
-cw -k '^桜$' | emit -Z 2
-```
-
-means:
-
-> calculate the complete exact-`桜` pair set and its Z values, then display only pairs whose already calculated Z value is at least 2.
-
-It does not mean:
-
-> discard low-CW pairs first and recalculate Z from the survivors.
-
-This distinction preserves the statistical meaning of Z while allowing visualization settings to be changed repeatedly without recomputing the measurement.
-
-## JSON OUTPUT
-
-JSON output is selected in the configuration file or temporarily with:
-
-```sh
-emit -T json
-```
-
-The top-level structure is:
+### Unit identifiers
 
 ```json
-{
-  "format": "cw-tools/graph",
-  "version": 1,
-  "emit": {
-    "config": "emit-config.json",
-    "output_format": "json"
-  },
-  "filters": {
-    "min_cw": null,
-    "min_z": 2
-  },
-  "counts": {
-    "nodes": 20,
-    "edges": 20
-  },
-  "nodes": [],
-  "edges": []
+"unit_separator": ", "
+```
+
+joins the unit identifiers in one table cell. A table intended for the main body of a paper will often omit `unit_ids`; a supplementary table can retain them.
+
+### Caption and label
+
+```json
+"caption": "CW results",
+"label": "tab:cw-results"
+```
+
+Both values may be strings or `null`.
+
+- Markdown writes the label as an HTML anchor and the caption as a bold line above the table.
+- LaTeX writes `\caption{...}` and `\label{...}` inside a `table` environment.
+- HTML writes the label as the table `id` and the caption as `<caption>`.
+
+### Output character
+
+The three table outputs are deliberately modest:
+
+- Markdown is a pipe table with numeric columns right-aligned;
+- LaTeX is a standard `table` plus `tabular` fragment using `l` and `r` columns and no required package;
+- HTML is a semantic `<table>` fragment with `<thead>`, `<tbody>`, and `class="numeric"` on numeric cells.
+
+`emit` escapes format-sensitive characters in token text, headings, captions, and unit identifiers. The output is intended to be directly usable as a first publication table and easy to refine with CSS or LaTeX formatting later.
+
+### Preserve Unix-stage decisions
+
+`emit` preserves input row order. It does not sort, rank, truncate, or select the "best" rows. Those research decisions remain explicit upstream:
+
+```sh
+sort -t $'\t' -k11,11gr result.tsv \
+  | head -20 \
+  | ./emit -c config/emit-table.config -T tex
+```
+
+Thus the paper can state both the numerical condition and the presentation limit without hiding either inside the formatter.
+
+## DISPLAY FILTERS
+
+```json
+"filters": {
+  "min_cw": null,
+  "min_z": null
 }
 ```
 
-### Top-level members
+Each value is either a finite number or `null`. A number applies an inclusive minimum threshold. `null` disables the corresponding threshold.
 
-| Member               | Meaning                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `format`             | data-format identifier, currently `cw-tools/graph`         |
-| `version`            | JSON graph-format version, currently `1`                   |
-| `emit.config`        | configuration path read by `emit`                          |
-| `emit.output_format` | effective output format                                    |
-| `filters`            | effective CW and Z thresholds after command-line overrides |
-| `counts.nodes`       | number of emitted nodes                                    |
-| `counts.edges`       | number of emitted edges                                    |
-| `nodes`              | node records                                               |
-| `edges`              | edge records                                               |
+These filters are applied before incident nodes, degree, and font-size normalization are calculated.
 
-### Node records
+## GRAPHVIZ GRAPH SETTINGS
 
-A node record has the form:
+The `dot` object controls graph-level DOT syntax and attributes.
+
+### `graph_name`
 
 ```json
-{
-  "id": "桜/桜/名/さくら",
-  "fields": ["桜", "桜", "名", "さくら"],
-  "df": 8,
-  "idf": 4.93357424796
-}
+"graph_name": "G"
 ```
 
-| Member   | Meaning                                                |
-| -------- | ------------------------------------------------------ |
-| `id`     | complete token string and stable graph-node identifier |
-| `fields` | token split at slash boundaries                        |
-| `df`     | global token document frequency supplied by `cw`       |
-| `idf`    | global token IDF supplied by `cw`                      |
+The value is safely quoted and used as the DOT graph identifier.
 
-Nodes are sorted lexically by complete token ID and deduplicated.
-
-### Edge records
-
-An edge record has the form:
-
-```json
-{
-  "source": "ちり/散る/ラ四-用/ちり",
-  "target": "桜/桜/名/さくら",
-  "ctf": 2,
-  "cdf": 2,
-  "cw": 7.2874543462720025,
-  "z": 2.582390082806497,
-  "unit_ids": ["10064", "10077"]
-}
-```
-
-| Member     | Meaning                           |
-| ---------- | --------------------------------- |
-| `source`   | complete source-token ID          |
-| `target`   | complete target-token ID          |
-| `ctf`      | pair occurrence count             |
-| `cdf`      | distinct selected-unit count      |
-| `cw`       | precomputed CW value              |
-| `z`        | precomputed Z value               |
-| `unit_ids` | occurrence-level unit identifiers |
-
-Edge order follows input order after filtering. The normal lexical pair ordering produced by `cw` is therefore preserved.
-
-Duplicate unit identifiers are retained in `unit_ids` when the same pair occurs more than once in one unit.
-
-### Returning from an edge to source text
-
-The `unit_ids` array makes the JSON graph traceable to its source units.
-
-```text
-edge
-    ↓ unit_ids
-source-text records
-```
-
-A downstream application can use each identifier to retrieve:
-
-- the original text;
-- anthology and poem metadata;
-- author information;
-- annotations or translations;
-- a WakaGraph or web-view URL.
-
-The JSON is therefore not merely a drawing intermediate. It is a reusable, source-linked research dataset.
-
-### JSON escaping
-
-Strings are emitted as valid JSON strings. Quotation marks, backslashes, control characters, and tab/newline characters are escaped.
-
-The JSON output of version 0.2.0 has been validated with a standard JSON parser.
-
-## GRAPHVIZ DOT OUTPUT
-
-DOT output is selected by the default configuration shown above or by:
-
-```sh
-emit -T dot
-```
-
-A minimal output resembles:
-
-```txt
-graph "G" {
-  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst"];
-  node [shape="plaintext"];
-  edge [penwidth=1];
-
-  "ちり/散る/ラ四-用/ちり" [
-    label="ちり",
-    df=17,
-    idf=4.17950237056,
-    tooltip="df=17; idf=4.17950237056"
-  ];
-
-  "桜/桜/名/さくら" [
-    label="桜",
-    df=8,
-    idf=4.93357424796,
-    tooltip="df=8; idf=4.93357424796"
-  ];
-
-  "ちり/散る/ラ四-用/ちり" -- "桜/桜/名/さくら" [
-    label="2",
-    ctf=2,
-    cdf=2,
-    cw=7.2874543462720025,
-    z=2.582390082806497,
-    unit_ids="10064,10077",
-    tooltip="ctf=2; cdf=2; cw=7.2874543462720025; z=2.582390082806497; unit_ids=10064,10077"
-  ];
-}
-```
-
-The actual program writes each node or edge statement on one line.
-
-### DOT node identity and label
-
-The complete token is quoted and used as the DOT node ID:
-
-```dot
-"桜/桜/名/さくら"
-```
-
-The visible label is selected independently through `node.label_field`:
-
-```dot
-label="桜"
-```
-
-This prevents homographic tokens with different complete analyses from being accidentally merged.
-
-### DOT node attributes
-
-Every node receives:
-
-| Attribute | Meaning                              |
-| --------- | ------------------------------------ |
-| `label`   | selected slash-separated token field |
-| `df`      | global document frequency            |
-| `idf`     | global inverse document frequency    |
-| `tooltip` | `df` and `idf` in readable form      |
-
-`df` and `idf` are retained as custom DOT attributes even when Graphviz does not use them for layout.
-
-### DOT edge attributes
-
-Every edge receives:
-
-| Attribute  | Meaning                                           |
-| ---------- | ------------------------------------------------- |
-| `label`    | optional visible value selected by `edge.label`   |
-| `ctf`      | pair occurrence count                             |
-| `cdf`      | distinct selected-unit count                      |
-| `cw`       | full-precision CW value                           |
-| `z`        | full-precision Z value                            |
-| `unit_ids` | comma-separated occurrence-level unit identifiers |
-| `tooltip`  | configured readable summary                       |
-
-The custom attributes preserve measurement information in the DOT source. `unit_ids` also retains the route back to original units.
-
-Graphviz itself does not assign semantic meaning to the custom attributes `ctf`, `cdf`, `cw`, `z`, or `unit_ids`. They are present for inspection and downstream processing. The standard `label` and `tooltip` attributes affect rendered output.
-
-### Directed output
-
-When:
+### `directed`
 
 ```json
 "directed": false
 ```
 
-`emit` writes:
+`false` writes an undirected `graph` with `--`. `true` writes a `digraph` with `->`. This affects serialization only; `emit` does not reinterpret upstream pair direction.
+
+### `charset`
+
+```json
+"charset": "UTF-8"
+```
+
+Writes the Graphviz `charset` graph attribute.
+
+### `overlap`
+
+```json
+"overlap": false
+```
+
+Writes a boolean Graphviz `overlap` attribute. The layout engine determines the exact overlap-removal behavior.
+
+### `outputorder`
+
+```json
+"outputorder": "edgesfirst"
+```
+
+Controls Graphviz drawing order. `edgesfirst` commonly keeps node labels visually above edges.
+
+### Graph font
+
+```json
+"fontname": "Noto Serif CJK JP"
+```
+
+Writes the graph-level `fontname` attribute. This applies to graph labels and other graph-level text. Node and edge fonts are configured independently.
+
+The named font must be visible to the Graphviz installation. `emit` quotes the name correctly but does not install or embed the font.
+
+### `sep`
+
+```json
+"sep": "+8"
+```
+
+Writes the Graphviz `sep` attribute. It supplies additional separation used by overlap removal. It is stored as a string so values such as `+8` remain intact.
+
+### `pack` and `packmode`
+
+```json
+"pack": true,
+"packmode": "graph"
+```
+
+These attributes control packing of disconnected components. They are useful when many small island components would otherwise occupy excessive space.
+
+### `splines`
+
+```json
+"splines": "line"
+```
+
+Writes the Graphviz `splines` attribute as a quoted string. Common values include `line`, `polyline`, `curved`, `ortho`, and `spline`; support depends on the selected Graphviz engine.
+
+If `fontname`, `sep`, `pack`, `packmode`, or `splines` is omitted, `emit` omits that DOT attribute and leaves the choice to Graphviz.
+
+## NODE SETTINGS
+
+### `shape`
+
+```json
+"shape": "oval"
+```
+
+Writes the Graphviz node `shape` attribute.
+
+### Node font
+
+```json
+"fontname": "Noto Serif CJK JP"
+```
+
+Writes the node-level Graphviz `fontname` attribute. It controls visible node labels.
+
+### `label_fields`
+
+```json
+"label_fields": [1, 4]
+```
+
+Selects one or more fields from the complete token. Values must be integers from 1 through 4. Duplicate entries are ignored while preserving the first occurrence.
+
+The older singular setting remains accepted:
+
+```json
+"label_field": 1
+```
+
+### `label_separator`
+
+```json
+"label_separator": "/"
+```
+
+Joins multiple selected label fields.
+
+### `font_size_by`
+
+```json
+"font_size_by": "fq"
+```
+
+Accepted values are:
+
+| Value | Meaning |
+| --- | --- |
+| `fq` | local token frequency in the key-selected set; reproduces the intention of the earlier `cw.c` visualization |
+| `idf` | global token weight |
+| `degree` | number of retained displayed edges incident to the node |
+
+The minimum and maximum values among the retained nodes are linearly mapped to:
+
+```json
+"min_font_size": 7,
+"max_font_size": 32
+```
+
+If every retained node has the same source value, the midpoint of the configured font-size range is used.
+
+Changing font-size mode changes presentation, not CW or Z.
+
+## EDGE SETTINGS
+
+### Edge font
+
+```json
+"fontname": "Noto Serif CJK JP"
+```
+
+Writes the edge-level Graphviz `fontname` attribute and controls visible edge labels.
+
+### `label`
+
+```json
+"label": "ctf"
+```
+
+Accepted values are:
+
+| Value | Visible edge label |
+| --- | --- |
+| `none` | no visible label |
+| `ctf` | CTF |
+| `cdf` | CDF |
+| `cw` | CW with six significant digits |
+| `z` | Z with six significant digits |
+
+Full-precision CW and Z remain stored as custom DOT attributes.
+
+### `tooltip`
+
+```json
+"tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"]
+```
+
+Accepted entries are `ctf`, `cdf`, `cw`, `z`, and `unit_ids`. An empty array disables edge tooltips.
+
+### `penwidth`
+
+```json
+"penwidth": 1.0
+```
+
+Sets one Graphviz `penwidth` for all edges. The value must be greater than zero.
+
+### `length`
+
+```json
+"length": 1.4
+```
+
+Writes Graphviz edge attribute `len`. For `neato`, this is the preferred edge length in inches. It is a layout preference, not a guaranteed geometric distance.
+
+The alias `len` is also accepted in the JSON configuration:
+
+```json
+"len": 1.4
+```
+
+If neither key is present, no `len` attribute is emitted.
+
+## SAFE DOT SERIALIZATION
+
+`emit` handles Graphviz syntax rather than requiring users to compose DOT manually.
+
+It safely quotes and escapes:
+
+- graph names;
+- node identifiers and labels;
+- font names;
+- shapes;
+- separation and spline settings;
+- tooltips and unit identifiers.
+
+Floating-point custom attributes are quoted. This avoids a DOT parsing ambiguity for values written in scientific notation with a negative exponent, such as:
+
+```text
+-2.6946750088283494e-05
+```
+
+A generated header may look like:
 
 ```dot
 graph "G" {
-  "A" -- "B";
+  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst",
+         fontname="Noto Serif CJK JP", sep="+8", pack=true,
+         packmode="graph", splines="line"];
+  node [shape="oval", fontname="Noto Serif CJK JP"];
+  edge [penwidth="1", fontname="Noto Serif CJK JP", len="1.4"];
 }
 ```
 
-When:
+The actual serializer writes each attribute statement on one line.
 
-```json
-"directed": true
-```
+## JSON OUTPUT
 
-it writes:
-
-```dot
-digraph "G" {
-  "A" -> "B";
-}
-```
-
-This is a serialization choice only. The current `pair` and `cw` pipeline normally produces unordered lexical pairs unless ordered pair generation was explicitly used upstream.
-
-### DOT escaping
-
-Node IDs, labels, graph names, tooltips, shapes, and other string attributes are quoted. Quotation marks and backslashes are escaped. Newlines are emitted as `\n`, carriage returns are removed, and tabs become spaces in DOT strings.
-
-### Rendering DOT
-
-`emit` writes DOT; it does not invoke Graphviz itself.
-
-For example:
+JSON output is selected with:
 
 ```sh
-cw -k '^桜$' < pairs.txt \
-  | emit > sakura.dot
-
-neato -Tsvg sakura.dot > sakura.svg
+emit -T json
 ```
 
-Other formats are selected by Graphviz:
+The output contains:
+
+- effective display filters;
+- output and label settings;
+- font-size mode and calculated node font sizes;
+- effective Graphviz font and layout settings;
+- node IDs, labels, fields, DF, IDF, FQ, degree, and font size;
+- edge CTF, CDF, CW, Z, and unit identifiers.
+
+JSON is intended as reusable research data. DOT is a visualization description; SVG, PDF, and PNG are rendered products.
+
+## OPTIONS
+
+### `-c FILE`, `--config FILE`
+
+Read `FILE` instead of `config/emit-config.json`.
+
+### `-T FORMAT`, `--format FORMAT`
+
+Temporarily select `json`, `dot`, `md`, `tex`, or `html`. The aliases `markdown` and `latex` are accepted.
+
+### `-W VALUE`, `--min-cw VALUE`
+
+Temporarily retain only edges whose CW is at least `VALUE`.
+
+### `-Z VALUE`, `--min-z VALUE`
+
+Temporarily retain only edges whose Z is at least `VALUE`.
+
+### `-h`, `--help`
+
+Display a usage summary and exit.
+
+### `-v`, `--version`
+
+Display:
+
+```text
+emit 0.7.0
+```
+
+## RENDERING
+
+`emit` writes DOT but does not invoke a Graphviz layout engine. The configuration records Graphviz attributes so the user need not repeat them as command-line options.
 
 ```sh
-neato -Tpdf sakura.dot > sakura.pdf
-neato -Tpng sakura.dot > sakura.png
+./cw ... | ./emit > graph.dot
+neato -Tsvg graph.dot > graph.svg
 ```
 
-The Graphviz layout engine is also chosen outside `emit`:
+The pipeline may be shortened:
 
 ```sh
-dot   -Tsvg graph.dot > graph-dot.svg
-neato -Tsvg graph.dot > graph-neato.svg
-sfdp  -Tsvg graph.dot > graph-sfdp.svg
+./cw ... | ./emit | neato -Tsvg > graph.svg
 ```
 
-This separation keeps device selection and layout execution out of the measurement and serialization programs.
+Other devices remain the renderer's responsibility:
+
+```sh
+./emit < graph.tsv | neato -Tpdf > graph.pdf
+./emit < graph.tsv | neato -Tpng > graph.png
+```
+
+Likewise, choosing `neato`, `dot`, or `sfdp` remains explicit because the layout algorithm is a substantive visualization choice. The repetitive and error-prone DOT attribute syntax belongs to `emit`.
 
 ## EXAMPLES
 
-### Use the normal configured DOT output
+### M16 graph with configured formatting
 
 ```sh
 grep '^1' tests/data/hachidaishu-pair.txt \
   | ./pair \
-  | ./cw -k '^桜$' \
-  | ./emit > kokin-sakura.dot
+  | ./cw -p 2,3 -k '^梅/名$' -M 16 \
+  | ./emit \
+  | neato -Tsvg > ume.svg
 ```
 
-### Render the DOT output as SVG
+### Exclude a category before graph construction
 
 ```sh
-neato -Tsvg kokin-sakura.dot > kokin-sakura.svg
+./cw ... \
+  | awk -F '\t' '$1 !~ /\/格助\// && $2 !~ /\/格助\//' \
+  | ./emit \
+  | neato -Tsvg > content-patterns.svg
 ```
 
-### Temporarily emit JSON
+### Compare FQ, IDF, and degree font sizing
 
-```sh
-grep '^1' tests/data/hachidaishu-pair.txt \
-  | ./pair \
-  | ./cw -k '^桜$' \
-  | ./emit -T json > kokin-sakura.json
-```
-
-### Temporarily retain only Z values of at least 2
-
-```sh
-grep '^1' tests/data/hachidaishu-pair.txt \
-  | ./pair \
-  | ./cw -k '^桜$' \
-  | ./emit -Z 2 > kokin-sakura-z2.dot
-```
-
-### Apply both CW and Z thresholds
-
-```sh
-./emit -W 5 -Z 2 cw-table.tsv > selected.dot
-```
-
-The retained edge must satisfy both conditions.
-
-### Use another configuration file
-
-```sh
-./emit -c configs/publication.json cw-table.tsv > publication.dot
-```
-
-### Make JSON the normal output
-
-Change:
+Prepare three configuration files differing only in:
 
 ```json
-"format": "json"
+"font_size_by": "fq"
 ```
-
-in `emit-config.json`, then run:
-
-```sh
-./emit < cw-table.tsv > graph.json
-```
-
-No `-T` option is needed because JSON is now the recorded normal behavior.
-
-### Make Z >= 1 the normal display condition
-
-Change:
 
 ```json
-"filters": {
-  "min_cw": null,
-  "min_z": 1
+"font_size_by": "idf"
+```
+
+```json
+"font_size_by": "degree"
+```
+
+Then reuse one measured table:
+
+```sh
+./cw ... > measured.tsv
+./emit -c config/emit-fq.json measured.tsv | neato -Tsvg > fq.svg
+./emit -c config/emit-idf.json measured.tsv | neato -Tsvg > idf.svg
+./emit -c config/emit-degree.json measured.tsv | neato -Tsvg > degree.svg
+```
+
+### Keep island components compact
+
+```json
+"dot": {
+  "overlap": false,
+  "sep": "+8",
+  "pack": true,
+  "packmode": "graph"
 }
 ```
 
-Then:
+### Inspect Graphviz font resolution
+
+`emit` writes the requested family name. To inspect what Graphviz resolves on the local machine:
 
 ```sh
-./emit < cw-table.tsv > graph.dot
+fc-match "Noto Serif CJK JP"
+neato -v -Tsvg graph.dot -o graph.svg 2>&1 | grep -i font
 ```
 
-records a concise command because the standard display policy is kept in the configuration file.
-
-## BUILD
-
-With the repository Makefile:
+### Produce the same publication table in three formats
 
 ```sh
-make emit
+./cw -p 2,3 -k '^梅/名$' -M 16 > ume.tsv
+
+./emit -c config/emit-table.config -T md ume.tsv > ume.md
+./emit -c config/emit-table.config -T tex ume.tsv > ume.tex
+./emit -c config/emit-table.config -T html ume.tsv > ume.html
 ```
 
-The corresponding target is:
-
-```make
-emit: $(EMIT_OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^
-```
-
-Version 0.2.0 does not require linking with `-lm`.
-
-A direct build is:
+### Prepare a short main-text table
 
 ```sh
-cc -O2 -std=c11 -Wall -Wextra -Wpedantic \
-  -o emit src/emit.c
+sort -t $'\t' -k12,12gr ume.tsv \
+  | head -10 \
+  | ./emit -c config/emit-table.config -T tex > ume-top10.tex
 ```
 
-## INSTALLATION
-
-If `emit` is included in `PROGS`, the repository Makefile installs it with:
-
-```sh
-make install
-```
-
-The default destination is:
-
-```text
-/usr/local/bin/emit
-```
-
-A different prefix may be specified:
-
-```sh
-make install PREFIX="$HOME/.local"
-```
-
-`emit-config.json` is not currently installed automatically. It should remain with the project, be copied to the working directory, or be selected explicitly with `-c`.
+The sort key, row limit, selected columns, labels, and numerical precision are all inspectable parts of the research record.
 
 ## EXIT STATUS
 
-`emit` exits with status 0 when output is completed successfully, including when no edge passes the configured filters.
+`emit` exits successfully after producing output. It exits with failure for conditions such as:
 
-It exits with failure for conditions including:
+- unreadable input or configuration files;
+- invalid JSON;
+- malformed or inconsistent TSV input;
+- invalid option arguments;
+- nonpositive font sizes, pen width, or edge length;
+- unavailable `fq` when `font_size_by` is `fq`.
 
-- an unavailable configuration or input file;
-- invalid JSON configuration syntax;
-- an invalid recognized configuration value;
-- more than one input file operand;
-- malformed or non-tab-separated input;
-- inconsistent input counts or token statistics;
-- an invalid command-line format or threshold;
-- an output write error;
-- memory allocation failure.
+Diagnostics are written to standard error.
 
-Diagnostics are written to standard error and normally include the input or configuration source and line number.
+## CURRENT LIMITATIONS
 
-## CURRENT LIMITATIONS OF VERSION 0.2.0
+Version 0.7.0 intentionally leaves several responsibilities outside `emit`:
 
-The JSON output is already suitable as a reusable graph dataset. The DOT output is intentionally an initial implementation and will need further visual adjustment.
+1. It does not invoke `neato`, `dot`, `sfdp`, or another renderer.
+2. It does not implement graph-structural pruning such as component size or k-core selection.
+3. It supports boolean `overlap`; nonboolean Graphviz overlap modes are not represented.
+4. It does not map edge width, color, or style to CW, Z, or frequency.
+5. Font names are passed to Graphviz but fonts are not installed or embedded.
+6. Unknown configuration keys are ignored, so spelling mistakes may leave a default unchanged.
+7. It trusts `cdf` after verifying only that `cdf <= ctf`.
+8. Table output deliberately uses plain Markdown, standard LaTeX `tabular`, and an HTML fragment; advanced pagination, long tables, CSS, and journal-specific styling remain later formatting steps.
 
-Current limitations include:
-
-1. `emit-config.json` is required; there is no “use internal defaults when absent” mode.
-2. A command-line option can set a threshold but cannot temporarily restore a configured threshold to `null`.
-3. Edge `penwidth` is fixed for the complete graph; it cannot yet be mapped to CW, Z, or frequency.
-4. Node font, font size, color, fill, margin, and size mappings are not configurable.
-5. Edge font, color, style, weight, and label formatting precision are not configurable.
-6. URL and hyperlink generation from `unit_ids` is not yet implemented.
-7. Graph-level options such as layout hints, splines, ratio, rank direction, and separation are not yet represented.
-8. `emit` does not invoke `dot`, `neato`, or another renderer.
-9. The JSON output records the effective filters and configuration path, but does not yet embed the entire effective visualization configuration.
-10. Unknown configuration keys are ignored, so spelling errors in keys are not always diagnosed.
-11. `cdf` is not independently verified against the number of distinct `unit_ids`.
-
-These are output-policy issues. They do not affect the IDF, CW, or Z values already calculated by `cw`.
+These are presentation and validation limitations. They do not affect measurements already calculated by `cw`.
 
 ## DESIGN PRINCIPLE
 
-The central design distinction is:
+Two complementary rules define `emit`:
 
 ```text
-JSON
-    reusable research data
-    complete node and edge values
-    unit identifiers linking back to source texts
+Do not reimplement ordinary line filtering that Unix already performs well.
 
-DOT
-    visualization description
-    visible labels and tooltips
-    Graphviz-specific layout and display attributes
-
-SVG/PDF/PNG
-    rendered viewing products produced from DOT
+Do not require researchers to write or debug Graphviz or publication-table syntax by hand.
 ```
 
-`emit` builds one filtered in-memory graph and sends it to separate JSON and DOT serializers. Calculation is not duplicated between output formats.
+Accordingly:
 
-This architecture allows the same measured graph to be:
+```text
+researcher-visible analytical choices
+    pattern projection
+    key selection
+    CW method
+    row-selection conditions
+    visible labels
+    display weight
 
-- archived as JSON;
-- visualized through Graphviz;
-- re-rendered with new display settings;
-- linked back to original texts through `unit_ids`;
-- reused by later web, statistical, or publication tools.
+formatter responsibilities
+    DOT quoting and escaping
+    scientific-number safety
+    graph/node/edge font attributes
+    Graphviz layout hints
+    JSON and DOT serialization
+```
+
+This division keeps the analytical record understandable while making graph production reliable and repeatable.
 
 ## FILES
 
 ```text
-emit-config.json
+config/emit-config.json
 ```
 
-Default configuration file read from the current working directory.
+Default configuration.
 
 ```text
 src/emit.c
 ```
 
-Source code for `emit`.
+Program source.
+
+```text
+docs/man-emit.md
+```
+
+This manual.
 
 ## SEE ALSO
 
 - [`pair`](./man-pair.md)
 - [`cw`](./man-cw.md)
 - [`idf-cw-z`](../notes/idf-cw-z.md)
-- `rbin`
-- Graphviz `dot`, `neato`, and `sfdp`
-
-## AUTHOR
-
-Hilofumi Yamamoto  
-Institute of Science Tokyo
-
-## LICENSE
-
-MIT License
+- `grep(1)`
+- `awk(1)`
+- Graphviz `neato`, `dot`, and `sfdp`

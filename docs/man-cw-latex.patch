@@ -1,0 +1,204 @@
+--- /mnt/data/man-cw-v0.9.0.md	2026-07-19 21:46:46.703309886 +0000
++++ /mnt/data/man-cw.md	2026-07-19 21:48:05.951082711 +0000
+@@ -19,6 +19,10 @@
+ 
+ This manual describes `cw` version 0.9.0.
+ 
++Formulas are shown twice: first in plain text for terminal and source-code
++comparison, and then in LaTeX notation for citation and reuse in scholarly
++writing.
++
+ A token may contain one to four slash-separated fields:
+ 
+ ```text
+@@ -263,6 +267,10 @@
+ N = |C|
+ ```
+ 
++\[
++N = |C|
++\]
++
+ ### Global token statistics
+ 
+ For a projected pattern `t`, global document frequency is:
+@@ -271,12 +279,24 @@
+ df_C(t) = number of units in C containing t
+ ```
+ 
++\[
++\operatorname{df}_{C}(t)
++=
++\left|\{u \in C : t \in u\}\right|
++\]
++
+ Global inverse document frequency is:
+ 
+ ```text
+ idf_C(t) = ln(N / df_C(t))
+ ```
+ 
++\[
++\operatorname{idf}_{C}(t)
++=
++\ln\!\left(\frac{N}{\operatorname{df}_{C}(t)}\right)
++\]
++
+ `cw` uses the natural logarithm and floating-point division.  No additive
+ smoothing is applied.
+ 
+@@ -291,6 +311,12 @@
+ gdf_C(t1,t2) = number of units in C containing the pair
+ ```
+ 
++\[
++\operatorname{gdf}_{C}(t_1,t_2)
++=
++\left|\{u \in C : (t_1,t_2) \in u\}\right|
++\]
++
+ Method 16 uses this value to measure how unusual the combination itself is in
+ the global corpus.
+ 
+@@ -309,6 +335,12 @@
+ S_r = units containing at least one pattern matching r
+ ```
+ 
++\[
++S_r
++=
++\{u \in C : \exists t \in u,\; t \models r\}
++\]
++
+ Every pair occurring in a selected unit is included.  `-k` therefore selects
+ units; it does not merely retain edges directly touching the key.
+ 
+@@ -364,6 +396,26 @@
+ `key_fq` is the local occurrence frequency of that one pattern.  Methods 7 and
+ 12 use `key_fq` and therefore require `-k` and five-column pair input.
+ 
++## MATHEMATICAL NOTATION
++
++The citation-ready formulas use the following symbols:
++
++| Symbol | Meaning |
++| --- | --- |
++| \(C\) | complete input corpus |
++| \(N=|C|\) | number of units in the complete corpus |
++| \(S\) | current local unit set; \(S=C\) when `-k` is absent |
++| \(S_r\) | units selected by key regular expression \(r\) |
++| \(\operatorname{df}_{C}(t)\) | global unit frequency of pattern \(t\) |
++| \(\operatorname{idf}_{C}(t)\) | global inverse document frequency of pattern \(t\) |
++| \(\operatorname{gdf}_{C}(t_1,t_2)\) | global unit frequency of pair \((t_1,t_2)\) |
++| \(\operatorname{ctf}_{S}(t_1,t_2)\) | retained local pair frequency in \(S\) |
++| \(\operatorname{fq}_{S_r}(r)\) | local frequency of patterns matching key \(r\) |
++
++Under the current per-unit pair-counting rule,
++\(\operatorname{ctf}_{S}(t_1,t_2)\) is numerically equal to the local pair DF,
++although the historical name `ctf` is retained in the output interface.
++
+ ## CW METHODS
+ 
+ Select a method with:
+@@ -381,6 +433,12 @@
+ w_token = sqrt(idf1 * idf2)
+ ```
+ 
++\[
++w_{\mathrm{token}}(t_1,t_2)
++=
++\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
++\]
++
+ This geometric mean combines the global weights of the two projected patterns.
+ 
+ ### Method 1: basic CW
+@@ -389,6 +447,13 @@
+ CW_1 = (1 + ln(ctf)) * sqrt(idf1 * idf2)
+ ```
+ 
++\[
++CW_{1}(t_1,t_2)
++=
++\left(1+\ln \operatorname{ctf}_{S}(t_1,t_2)\right)
++\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
++\]
++
+ Usage:
+ 
+ ```sh
+@@ -411,6 +476,17 @@
+                     1 + log10(key_fq)
+ ```
+ 
++\[
++CW_{7}(t_1,t_2\mid r)
++=
++\frac{
++\left(1+\log_{10}\operatorname{ctf}_{S_r}(t_1,t_2)\right)
++\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
++}{
++1+\log_{10}\operatorname{fq}_{S_r}(r)
++}
++\]
++
+ Usage:
+ 
+ ```sh
+@@ -440,6 +516,21 @@
+ CW_12 = (1 + key_fq / ctf) * sqrt(idf1 * idf2)
+ ```
+ 
++To express the historical integer quotient explicitly:
++
++\[
++CW_{12}(t_1,t_2\mid r)
++=
++\left(
++1+
++\left\lfloor
++\frac{\operatorname{fq}_{S_r}(r)}
++     {\operatorname{ctf}_{S_r}(t_1,t_2)}
++\right\rfloor
++\right)
++\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
++\]
++
+ Usage:
+ 
+ ```sh
+@@ -462,6 +553,21 @@
+         * (1 + ln(local_ctf))
+ ```
+ 
++\[
++CW_{16}(t_1,t_2\mid S)
++=
++\left(
++1+
++\ln\!\left(
++\frac{N}{\operatorname{gdf}_{C}(t_1,t_2)}
++\right)
++\right)
++\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
++\left(
++1+\ln \operatorname{ctf}_{S}(t_1,t_2)
++\right)
++\]
++
+ Usage:
+ 
+ ```sh
+@@ -518,6 +624,12 @@
+ z = (x - mean_selected_cw) / sd_selected_cw
+ ```
+ 
++\[
++z_i
++=
++\frac{CW_i-\overline{CW}_{S}}{s_{CW,S}}
++\]
++
+ The sample standard deviation uses denominator `n - 1`.
+ 
+ The selected distribution is:

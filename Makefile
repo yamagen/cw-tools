@@ -1,43 +1,22 @@
-PROGS = pair cw emit cm
+CC ?= cc
+CFLAGS ?= -O2 -std=c11 -Wall -Wextra -Wpedantic
+LDLIBS ?= -lm
 
-SRC_DIR = src
-
-PAIR_OBJ = $(SRC_DIR)/pair.o
-CW_OBJ  = $(SRC_DIR)/cw.o
-CM_OBJ  = $(SRC_DIR)/cm.o
-EMIT_OBJ  = $(SRC_DIR)/emit.o
-COMMON_OBJ = src/common.o
-
-
-CC       ?= cc
-CPPFLAGS ?=
-CFLAGS   ?= -O2 -std=c11 -Wall -Wextra -Wpedantic
-LDFLAGS  ?=
-
-PREFIX ?= /usr/local
-BINDIR ?= $(PREFIX)/bin
+PROGS = pair cw emit
 
 all: $(PROGS)
 
-pair: $(PAIR_OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^
+pair: src/pair.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-cw: $(CW_OBJ) $(COMMON_OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^ -lm
+cw: src/cw.o src/common.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-cm: $(CM_OBJ) $(COMMON_OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^ -lm
+emit: src/emit.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-emit: $(EMIT_OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^
-
-install: $(PROGS)
-	install -d $(DESTDIR)$(BINDIR)
-	for prog in $(PROGS); do \
-		install -m 755 $$prog $(DESTDIR)$(BINDIR)/$$prog; \
-	done
+src/%.o: src/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(PROGS) $(PAIR_OBJ) $(CW_OBJ) $(CM_OBJ) $(COMMON_OBJ) $(EMIT_OBJ)
-
-.PHONY: all install clean
+	rm -f $(PROGS) src/*.o

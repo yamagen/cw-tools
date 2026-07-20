@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,12 +18,30 @@ struct uid_array {
     size_t cap;
 };
 
+struct variant {
+    char *token;
+    size_t df;
+    const char *last_unit;
+    struct variant *next;
+};
+
+struct frequency_array {
+    const char **unit;
+    size_t *count;
+    size_t len;
+    size_t cap;
+};
+
 struct node {
     char *key;
     size_t count;
     size_t df;
     const char *last_unit;
     struct uid_array uid;
+    struct variant *variants;
+    size_t fq;
+    int fq_state; /* 0: unknown, 1: available, -1: unavailable */
+    struct frequency_array frequencies;
     struct node *next;
 };
 
@@ -149,7 +168,16 @@ static void table_free(struct table *table)
 
         while (node != NULL) {
             struct node *next = node->next;
+            struct variant *variant = node->variants;
+            while (variant != NULL) {
+                struct variant *variant_next = variant->next;
+                free(variant->token);
+                free(variant);
+                variant = variant_next;
+            }
             free(node->uid.item);
+            free(node->frequencies.unit);
+            free(node->frequencies.count);
             free(node->key);
             free(node);
             node = next;
@@ -170,17 +198,139 @@ static void uid_append(struct uid_array *uid, const char *unit)
     uid->item[uid->len++] = unit;
 }
 
-static void touch(struct node *node, const char *unit, bool keep_uid)
+static void frequency_add(struct node *node, const char *unit, size_t count)
 {
+    struct frequency_array *frequencies = &node->frequencies;
+
+    if (frequencies->len > 0 &&
+        strcmp(frequencies->unit[frequencies->len - 1], unit) == 0) {
+        frequencies->count[frequencies->len - 1] += count;
+    } else {
+        if (frequencies->len == frequencies->cap) {
+            size_t new_cap = frequencies->cap == 0 ? 8 : frequencies->cap * 2;
+            frequencies->unit = xrealloc(
+                frequencies->unit, new_cap * sizeof(*frequencies->unit));
+            frequencies->count = xrealloc(
+                frequencies->count, new_cap * sizeof(*frequencies->count));
+            frequencies->cap = new_cap;
+        }
+        frequencies->unit[frequencies->len] = unit;
+        frequencies->count[frequencies->len] = count;
+        frequencies->len++;
+    }
+    node->fq += count;
+}
+
+static void record_term_frequency(struct node *node, const char *unit,
+                                  size_t count, bool available)
+{
+    if (!available) {
+        node->fq_state = -1;
+        return;
+    }
+    if (node->fq_state < 0)
+        return;
+    node->fq_state = 1;
+    frequency_add(node, unit, count);
+}
+
+static void touch(struct node *node, const char *unit, bool keep_uid,
+                  bool unique_per_unit)
+{
+    bool same_unit =
+        node->last_unit != NULL && strcmp(node->last_unit, unit) == 0;
+
+    if (unique_per_unit && same_unit)
+        return;
+
     node->count++;
 
-    if (node->last_unit == NULL || strcmp(node->last_unit, unit) != 0) {
+    if (!same_unit) {
         node->df++;
         node->last_unit = unit;
     }
 
     if (keep_uid)
         uid_append(&node->uid, unit);
+}
+
+char *cwt_token_project(const char *token, unsigned field_mask)
+{
+    CwtTokenFields fields;
+    size_t length = 0;
+    size_t selected = 0;
+
+    cwt_token_parse(token, &fields);
+    field_mask &= CWT_TOKEN_FIELD_ALL;
+
+    for (size_t i = 0; i < fields.count; i++) {
+        if ((field_mask & CWT_TOKEN_FIELD_BIT(i + 1)) == 0)
+            continue;
+        if (selected > 0)
+            length++;
+        length += fields.field[i].len;
+        selected++;
+    }
+
+    /* A one-field token remains usable under defaults such as 2,3,4. */
+    if (selected == 0)
+        return xstrdup(token);
+
+    char *projected = xmalloc(length + 1);
+    char *out = projected;
+    selected = 0;
+
+    for (size_t i = 0; i < fields.count; i++) {
+        if ((field_mask & CWT_TOKEN_FIELD_BIT(i + 1)) == 0)
+            continue;
+        if (selected > 0)
+            *out++ = '/';
+        memcpy(out, fields.field[i].ptr, fields.field[i].len);
+        out += fields.field[i].len;
+        selected++;
+    }
+    *out = '\0';
+    return projected;
+}
+
+static bool record_variant(struct node *term, const char *token,
+                           const char *unit)
+{
+    struct variant *variant;
+
+    for (variant = term->variants; variant != NULL; variant = variant->next) {
+        if (strcmp(variant->token, token) == 0)
+            break;
+    }
+
+    if (variant == NULL) {
+        variant = xcalloc(1, sizeof(*variant));
+        variant->token = xstrdup(token);
+        variant->next = term->variants;
+        term->variants = variant;
+    }
+
+    if (variant->last_unit == NULL || strcmp(variant->last_unit, unit) != 0) {
+        variant->df++;
+        variant->last_unit = unit;
+        return true;
+    }
+    return false;
+}
+
+static const char *representative_token(const struct node *term)
+{
+    const struct variant *best = NULL;
+
+    for (const struct variant *variant = term->variants;
+         variant != NULL; variant = variant->next) {
+        if (best == NULL || variant->df > best->df ||
+            (variant->df == best->df &&
+             strcmp(variant->token, best->token) < 0))
+            best = variant;
+    }
+
+    return best != NULL ? best->token : term->key;
 }
 
 static char *make_pair_key(const char *left, const char *right)
@@ -195,9 +345,25 @@ static char *make_pair_key(const char *left, const char *right)
     return key;
 }
 
+static size_t parse_positive_count(const char *text, const char *source,
+                                   size_t line_number)
+{
+    char *end = NULL;
+    errno = 0;
+    unsigned long long value = strtoull(text, &end, 10);
+    if (errno != 0 || end == text || *end != '\0' || value == 0 ||
+        value > (unsigned long long)SIZE_MAX) {
+        fprintf(stderr, "%s: %s:%zu: invalid token frequency '%s'\n",
+                progname, source, line_number, text);
+        exit(EXIT_FAILURE);
+    }
+    return (size_t)value;
+}
+
 static void process_line(char *line, size_t line_number, const char *source,
                          struct table *units, struct table *terms,
-                         struct table *pairs)
+                         struct table *pairs,
+                         const CwtStatsReadOptions *options)
 {
     char *saveptr = NULL;
     char *unit = strtok_r(line, " \t\r\n", &saveptr);
@@ -205,31 +371,82 @@ static void process_line(char *line, size_t line_number, const char *source,
     if (unit == NULL || unit[0] == '#')
         return;
 
-    char *left = strtok_r(NULL, " \t\r\n", &saveptr);
-    char *right = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *left_input = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *right_input = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *left_count_text = strtok_r(NULL, " \t\r\n", &saveptr);
+    char *right_count_text = strtok_r(NULL, " \t\r\n", &saveptr);
     char *extra = strtok_r(NULL, " \t\r\n", &saveptr);
 
-    if (left == NULL || right == NULL || extra != NULL) {
+    bool counts_available = left_count_text != NULL || right_count_text != NULL;
+    if (left_input == NULL || right_input == NULL || extra != NULL ||
+        (counts_available &&
+         (left_count_text == NULL || right_count_text == NULL))) {
         fprintf(stderr,
-                "%s: %s:%zu: expected: unit_id token1 token2\n",
+                "%s: %s:%zu: expected: unit_id token1 token2 [fq1 fq2]\n",
                 progname, source, line_number);
         exit(EXIT_FAILURE);
     }
 
+    size_t left_count = 0;
+    size_t right_count = 0;
+    if (counts_available) {
+        left_count = parse_positive_count(left_count_text, source, line_number);
+        right_count = parse_positive_count(right_count_text, source, line_number);
+    }
+
+    unsigned pattern_fields = CWT_TOKEN_FIELD_ALL;
+    bool unordered_pairs = false;
+    bool unique_pairs_per_unit = false;
+    bool drop_self_pairs = false;
+
+    if (options != NULL) {
+        pattern_fields = options->pattern_fields & CWT_TOKEN_FIELD_ALL;
+        unordered_pairs = options->unordered_pairs != 0;
+        unique_pairs_per_unit = options->unique_pairs_per_unit != 0;
+        drop_self_pairs = options->drop_self_pairs != 0;
+    }
+    if (pattern_fields == 0)
+        pattern_fields = CWT_TOKEN_FIELD_ALL;
+
+    char *left_key = cwt_token_project(left_input, pattern_fields);
+    char *right_key = cwt_token_project(right_input, pattern_fields);
+
     struct node *unit_node = table_get(units, unit, true);
     const char *unit_key = unit_node->key;
 
-    touch(table_get(terms, left, true), unit_key, false);
-    touch(table_get(terms, right, true), unit_key, false);
+    struct node *left_term = table_get(terms, left_key, true);
+    struct node *right_term = table_get(terms, right_key, true);
+    touch(left_term, unit_key, false, false);
+    touch(right_term, unit_key, false, false);
 
-    char *pair_key = make_pair_key(left, right);
-    touch(table_get(pairs, pair_key, true), unit_key, true);
-    free(pair_key);
+    if (record_variant(left_term, left_input, unit_key))
+        record_term_frequency(left_term, unit_key, left_count,
+                              counts_available);
+    if (record_variant(right_term, right_input, unit_key))
+        record_term_frequency(right_term, unit_key, right_count,
+                              counts_available);
+
+    if (unordered_pairs && strcmp(left_key, right_key) > 0) {
+        char *tmp = left_key;
+        left_key = right_key;
+        right_key = tmp;
+    }
+
+    if (!drop_self_pairs || strcmp(left_key, right_key) != 0) {
+        char *pair_key = make_pair_key(left_key, right_key);
+        touch(table_get(pairs, pair_key, true), unit_key, true,
+              unique_pairs_per_unit);
+        free(pair_key);
+    }
+
+    free(left_key);
+    free(right_key);
 }
 
 static void process_stream(FILE *stream, const char *source,
                            struct table *units, struct table *terms,
-                           struct table *pairs)
+                           struct table *pairs,
+                           const CwtStatsReadOptions *options)
 {
     char *line = NULL;
     size_t capacity = 0;
@@ -237,7 +454,7 @@ static void process_stream(FILE *stream, const char *source,
 
     while (getline(&line, &capacity, stream) != -1) {
         line_number++;
-        process_line(line, line_number, source, units, terms, pairs);
+        process_line(line, line_number, source, units, terms, pairs, options);
     }
 
     if (ferror(stream)) {
@@ -264,9 +481,27 @@ static void copy_tokens(CwtCorpusStats *stats, struct table *terms,
              node != NULL;
              node = node->next) {
             CwtTokenStat *token = &stats->tokens[stats->token_count++];
-            token->token = xstrdup(node->key);
+            token->pattern = xstrdup(node->key);
+            token->token = xstrdup(representative_token(node));
             token->df = node->df;
             token->idf = log((double)num_units / (double)node->df);
+            token->fq_available = node->fq_state == 1;
+            if (token->fq_available) {
+                token->fq = node->fq;
+                token->fq_unit_ids.items = xcalloc(
+                    node->frequencies.len,
+                    sizeof(*token->fq_unit_ids.items));
+                token->fq_unit_counts = xcalloc(
+                    node->frequencies.len,
+                    sizeof(*token->fq_unit_counts));
+                token->fq_unit_ids.len = node->frequencies.len;
+                token->fq_unit_ids.cap = node->frequencies.len;
+                for (size_t j = 0; j < node->frequencies.len; j++) {
+                    token->fq_unit_ids.items[j] =
+                        xstrdup(node->frequencies.unit[j]);
+                    token->fq_unit_counts[j] = node->frequencies.count[j];
+                }
+            }
         }
     }
 }
@@ -321,8 +556,10 @@ static void copy_pairs(CwtCorpusStats *stats, struct table *pairs,
             die("internal term-table error");
 
         CwtPairStat *pair = &stats->pairs[stats->pair_count++];
-        pair->token1 = xstrdup(left);
-        pair->token2 = xstrdup(right);
+        pair->pattern1 = xstrdup(left);
+        pair->pattern2 = xstrdup(right);
+        pair->token1 = xstrdup(representative_token(left_term));
+        pair->token2 = xstrdup(representative_token(right_term));
         pair->ctf = pair_node->count;
         pair->cdf = pair_node->df;
         pair->df1 = left_term->df;
@@ -342,15 +579,16 @@ void cwt_stats_init(CwtCorpusStats *stats)
     memset(stats, 0, sizeof(*stats));
 }
 
-int cwt_stats_read(FILE *stream, CwtCorpusStats *stats,
-                   const char *program_name)
+int cwt_stats_read_with_options(FILE *stream, CwtCorpusStats *stats,
+                                const char *program_name,
+                                const CwtStatsReadOptions *options)
 {
     struct table units = {0};
     struct table terms = {0};
     struct table pairs = {0};
 
     progname = program_name != NULL ? program_name : "cw-tools";
-    process_stream(stream, "-", &units, &terms, &pairs);
+    process_stream(stream, "-", &units, &terms, &pairs, options);
 
     stats->unit_count = units.len;
     if (units.len != 0) {
@@ -364,14 +602,28 @@ int cwt_stats_read(FILE *stream, CwtCorpusStats *stats,
     return 0;
 }
 
+int cwt_stats_read(FILE *stream, CwtCorpusStats *stats,
+                   const char *program_name)
+{
+    return cwt_stats_read_with_options(stream, stats, program_name, NULL);
+}
+
 void cwt_stats_free(CwtCorpusStats *stats)
 {
-    for (size_t i = 0; i < stats->token_count; i++)
+    for (size_t i = 0; i < stats->token_count; i++) {
+        free(stats->tokens[i].pattern);
         free(stats->tokens[i].token);
+        for (size_t j = 0; j < stats->tokens[i].fq_unit_ids.len; j++)
+            free(stats->tokens[i].fq_unit_ids.items[j]);
+        free(stats->tokens[i].fq_unit_ids.items);
+        free(stats->tokens[i].fq_unit_counts);
+    }
     free(stats->tokens);
 
     for (size_t i = 0; i < stats->pair_count; i++) {
         CwtPairStat *pair = &stats->pairs[i];
+        free(pair->pattern1);
+        free(pair->pattern2);
         free(pair->token1);
         free(pair->token2);
         for (size_t j = 0; j < pair->unit_ids.len; j++)
@@ -382,11 +634,11 @@ void cwt_stats_free(CwtCorpusStats *stats)
     cwt_stats_init(stats);
 }
 
-const CwtTokenStat *cwt_stats_find_token(const CwtCorpusStats *stats,
-                                         const char *token)
+const CwtTokenStat *cwt_stats_find_pattern(const CwtCorpusStats *stats,
+                                           const char *pattern)
 {
     for (size_t i = 0; i < stats->token_count; i++) {
-        if (strcmp(stats->tokens[i].token, token) == 0)
+        if (strcmp(stats->tokens[i].pattern, pattern) == 0)
             return &stats->tokens[i];
     }
     return NULL;
