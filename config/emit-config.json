@@ -8,28 +8,33 @@
     "graph_name": "G",
     "directed": false,
     "charset": "UTF-8",
-    "overlap": false,
+    "overlap": true,
     "outputorder": "edgesfirst",
-    "fontname": "Noto Serif CJK JP",
-    "sep": "+8",
+    "fontname": "Noto Sans CJK JP",
+    "--sep": "+8",
     "pack": true,
     "packmode": "graph",
+    "-penwidth": 0.2,
+    "style": "setlinewidth(.2)",
     "splines": "line"
   },
   "node": {
-    "shape": "oval",
-    "fontname": "Noto Serif CJK JP",
-    "label_fields": [1],
+    "shape": "ellipse",
+    "fontname": "Noto Sans CJK JP",
+    "label_fields": [2],
     "label_separator": "/",
     "font_size_by": "fq",
-    "min_font_size": 7,
-    "max_font_size": 32
+    "--style": "setlinewidth(.2)",
+    "penwidth": 0.2,
+    "min_font_size": 6,
+    "max_font_size": 18
   },
   "edge": {
-    "fontname": "Noto Serif CJK JP",
+    "fontname": "Noto Sans CJK JP",
+    "--fontname": "Noto Serif CJK JP",
     "label": "ctf",
     "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
-    "penwidth": 1.0,
+    "penwidth": 0.2,
     "length": 1.4
   }
 }

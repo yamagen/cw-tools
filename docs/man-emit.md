@@ -2,7 +2,7 @@
 
 ## NAME
 
-`emit` — format line-oriented `cw` results as JSON, Graphviz DOT, Markdown, LaTeX, or HTML
+`emit` — format line-oriented `cw` results as JSON, Graphviz DOT, Markdown, LaTeX, HTML, or interactive D3 HTML
 
 ## SYNOPSIS
 
@@ -17,10 +17,11 @@ emit [OPTION]... [FILE]
 - a reusable JSON graph dataset;
 - a Graphviz DOT description;
 - a Markdown table;
-- a LaTeX table; or
-- an HTML table fragment.
+- a LaTeX table;
+- an HTML table fragment; or
+- a complete interactive HTML document using D3.js.
 
-This manual describes `emit` version 0.7.0.
+This manual describes `emit` version 0.8.0.
 
 `emit` is a formatter. It does not calculate or recalculate IDF, CW, Z, CTF, CDF, or token frequency. Those values belong to the measurement stage implemented by `cw`.
 
@@ -28,16 +29,21 @@ The normal display policy is read from `config/emit-config.json`. Command-line o
 
 With no file operand, `emit` reads standard input. At most one input file may be specified.
 
+Version 0.8.0 separates the output implementations into independent source modules while retaining one executable named `emit`. This internal reorganization does not change the input format or the ordinary command-line interface.
+
 ## PLACE IN THE CW-TOOLS PIPELINE
 
-The principal processing boundary is:
+The principal processing boundaries are:
 
 ```text
 pair -> cw -> grep / awk -> emit -> neato / dot / sfdp
-            line-oriented    graph-oriented
+            line-oriented    Graphviz description
 
 pair -> cw -> grep / awk -> emit -T md / tex / html
             line-oriented    publication table
+
+pair -> cw -> grep / awk -> emit -T d3 -> web browser
+            line-oriented    interactive graph
 ```
 
 The programs have distinct responsibilities:
@@ -61,14 +67,19 @@ emit
     construct the displayed node and edge set for graph output
     derive display values such as degree and font size
     select and label columns for table output
-    translate configuration into safe JSON, DOT, Markdown, LaTeX, or HTML
+    translate configuration into safe target-specific output
+    dispatch to JSON, DOT, table, or D3 output modules
 
 neato / dot / sfdp
-    calculate geometric layout
+    calculate geometric layout for DOT output
     render SVG, PDF, PNG, or another device format
+
+web browser
+    load D3.js
+    calculate and display the interactive force layout
 ```
 
-A typical pipeline is:
+A typical Graphviz pipeline is:
 
 ```sh
 grep '^1' tests/data/hachidaishu-pair.txt \
@@ -79,7 +90,19 @@ grep '^1' tests/data/hachidaishu-pair.txt \
   | neato -Tsvg > ume.svg
 ```
 
-The research conditions are visible in the pipeline. Ordinary row filtering remains ordinary Unix processing; Graphviz syntax, table syntax, quoting, and target-specific escaping are handled by `emit`.
+The same measured rows can be written as an interactive graph:
+
+```sh
+grep '^1' tests/data/hachidaishu-pair.txt \
+  | ./pair \
+  | ./cw -p 2,3 -k '^梅/名$' -M 16 \
+  | awk -F '\t' '$12 >= 2' \
+  | ./emit -T d3 > ume.html
+
+firefox ume.html
+```
+
+The research conditions remain visible in the pipeline. Ordinary row filtering remains ordinary Unix processing; Graphviz syntax, table syntax, JavaScript data serialization, quoting, and target-specific escaping are handled by `emit`.
 
 ## INPUT
 
@@ -121,20 +144,22 @@ When legacy input is used, node frequency `fq` is unavailable. Consequently:
 "font_size_by": "fq"
 ```
 
-causes an error. Use current `pair` and `cw` output, or select `idf` or `degree` for font sizing.
+causes an error for JSON, DOT, and D3 output. Use current `pair` and `cw` output, or select `idf` or `degree` for font sizing.
+
+Table output may still include `fq1` or `fq2`; unavailable values are written as `-`.
 
 ### Tabs, comments, and validation
 
 Fields must be separated by literal tab characters. Empty lines and lines beginning with `#` are ignored.
 
-`emit` verifies, among other things, that:
+`emit` verifies that:
 
-- numeric fields are syntactically valid and finite;
-- `ctf` is greater than zero;
-- `cdf` does not exceed `ctf`;
-- token fields and unit identifiers are nonempty;
-- the number of trailing unit identifiers agrees with `ctf`;
+- the row can be parsed as either the current or legacy layout;
+- count fields are nonnegative integers representable as `size_t`;
+- IDF, CW, and Z fields are syntactically valid finite numbers;
 - repeated appearances of a node carry consistent `df`, `idf`, and available `fq` values.
+
+Version 0.8.0 does not yet check relational constraints such as `ctf > 0`, `cdf <= ctf`, or agreement between `ctf` and the number of trailing unit identifiers. It also does not reject empty token or unit-identifier strings.
 
 `emit` does not recalculate the supplied measurements.
 
@@ -146,7 +171,7 @@ Fields must be separated by literal tab characters. Empty lines and lines beginn
 f1/f2/f3/f4
 ```
 
-The complete token is used as the DOT and JSON node identifier. The visible node label is independently constructed from `node.label_fields`.
+The complete token is used as the JSON, DOT, and D3 node identifier. The visible node label is independently constructed from `node.label_fields`.
 
 For example:
 
@@ -175,17 +200,15 @@ The program does not assume that any field is a surface form, lemma, part of spe
 
 Before `emit`, every `cw` result is one TSV row. A condition that can be decided from that row should normally be expressed with `grep`, `grep -v`, or `awk`, rather than added as a new special-purpose `emit` option.
 
-This preserves a simple rule:
-
 ```text
 row pruning
     grep / grep -v / awk
 
 graph-structural processing
-    emit
+    emit or a later graph-processing program
 ```
 
-The row filter does not alter IDF, CW, or Z. It only decides which already measured edges are passed to the graph formatter.
+The row filter does not alter IDF, CW, or Z. It only decides which already measured edges are passed to the formatter.
 
 ### Filter by CW
 
@@ -219,7 +242,7 @@ This retains rows whose CTF is at least 2, CW is at least 10, and Z is at least 
 
 ### Exclude a pattern from either endpoint
 
-When the third complete-token field records a category such as `格助`, a precise field-aware filter can be written in `awk`:
+When the third complete-token field records a category such as `格助`, a field-aware filter can be written in `awk`:
 
 ```sh
 ./cw ... \
@@ -250,6 +273,7 @@ but it searches the complete line, including both endpoints and trailing unit id
 
 awk -F '\t' '$12 >= 1' ume-cw.tsv | ./emit > ume-z1.dot
 awk -F '\t' '$12 >= 2' ume-cw.tsv | ./emit > ume-z2.dot
+awk -F '\t' '$12 >= 2' ume-cw.tsv | ./emit -T d3 > ume-z2.html
 ```
 
 The expensive measurement stage is not repeated, and every display condition remains inspectable.
@@ -275,7 +299,7 @@ Conditions requiring knowledge of the complete displayed graph cannot be decided
 - selecting the largest connected component;
 - iterative k-core pruning.
 
-Such operations belong conceptually after graph construction and therefore in `emit` or a later graph-processing program. Version 0.7.0 calculates displayed degree for font sizing but does not yet implement structural pruning options.
+Version 0.8.0 calculates displayed degree for font sizing but does not implement structural pruning options.
 
 ## CONFIGURATION
 
@@ -343,6 +367,50 @@ A complete configuration is:
 
 The file must be valid JSON. Comments and trailing commas are not accepted. Unknown keys are currently ignored.
 
+### D3 configuration in version 0.8.0
+
+Version 0.8.0 does **not** define a separate `d3` configuration object, and the distribution does not require a file named `emit-d3.json`.
+
+The ordinary configuration file can select D3 output:
+
+```json
+"format": "d3"
+```
+
+or the output can be selected temporarily:
+
+```sh
+./emit -T d3
+```
+
+A separate file may be created merely as a convenient saved profile:
+
+```sh
+cp config/emit-config.json config/emit-d3.json
+```
+
+Change its format to:
+
+```json
+"format": "d3"
+```
+
+and use it with:
+
+```sh
+./emit -c config/emit-d3.json result.tsv > graph.html
+```
+
+Such a file contains the same shared settings as `emit-config.json`; it does not unlock additional D3-specific settings. Adding an unimplemented object such as:
+
+```json
+"d3": {
+  "charge": -180
+}
+```
+
+has no effect in version 0.8.0 because unknown configuration keys are ignored.
+
 ### Precedence
 
 Effective settings are determined in this order:
@@ -372,6 +440,7 @@ Accepted values are:
 | `"md"` | Markdown table |
 | `"tex"` | LaTeX `table` and `tabular` fragment |
 | `"html"` | HTML `<table>` fragment |
+| `"d3"` | complete interactive D3 HTML document |
 
 The aliases `markdown` and `latex` are also accepted.
 
@@ -383,11 +452,12 @@ emit -T dot
 emit -T md
 emit -T tex
 emit -T html
+emit -T d3
 ```
 
 ## TABLE OUTPUT
 
-### `emit-table.config`
+### Table configuration
 
 Table output is controlled by an ordinary JSON configuration file. The filename may be `config/emit-table.config`; the extension does not affect parsing.
 
@@ -459,12 +529,12 @@ The same selected rows and column policy are therefore reused across all three p
 | `cdf` | selected-unit pair frequency |
 | `df1`, `df2` | global unit frequencies |
 | `idf1`, `idf2` | global IDF values |
-| `fq1`, `fq2` | local token frequencies, or `NA` for legacy input |
+| `fq1`, `fq2` | local token frequencies, or `-` for legacy input |
 | `cw` | CW value |
 | `z` | Z value |
 | `unit_ids` | joined trailing unit identifiers |
 
-Duplicate columns are rejected. The default, when no `table` object is supplied, is:
+Repeated column names are ignored after their first appearance. The default, when no `table` object is supplied, is:
 
 ```json
 ["token1", "token2", "ctf", "cdf", "cw", "z", "unit_ids"]
@@ -472,7 +542,7 @@ Duplicate columns are rejected. The default, when no `table` object is supplied,
 
 ### `table.headers`
 
-`headers` is optional. When supplied, it must contain exactly one string for every selected column. When omitted, `emit` supplies short English headings.
+`headers` is optional. When supplied, it must not contain more entries than the selected columns. Omitted headings are supplied from the corresponding default short English names.
 
 This permits publication-specific terminology without changing the computed data:
 
@@ -482,23 +552,11 @@ This permits publication-specific terminology without changing the computed data
 
 ### Token labels
 
-The table's `token1` and `token2` columns are constructed independently from DOT node labels:
+The table's `token1` and `token2` columns are constructed independently from graph node labels:
 
 ```json
 "label_fields": [1, 4],
 "label_separator": "/"
-```
-
-For example:
-
-```text
-桜/桜/名/さくら
-```
-
-is written as:
-
-```text
-桜/さくら
 ```
 
 Select `raw_token1` or `raw_token2` when the complete representative token must appear in the table.
@@ -528,9 +586,10 @@ joins the unit identifiers in one table cell. A table intended for the main body
 
 Both values may be strings or `null`.
 
-- Markdown writes the label as an HTML anchor and the caption as a bold line above the table.
 - LaTeX writes `\caption{...}` and `\label{...}` inside a `table` environment.
-- HTML writes the label as the table `id` and the caption as `<caption>`.
+- HTML writes `caption` as `<caption>`.
+- Markdown ignores both values in version 0.8.0.
+- HTML ignores `label` in version 0.8.0.
 
 ### Output character
 
@@ -540,7 +599,7 @@ The three table outputs are deliberately modest:
 - LaTeX is a standard `table` plus `tabular` fragment using `l` and `r` columns and no required package;
 - HTML is a semantic `<table>` fragment with `<thead>`, `<tbody>`, and `class="numeric"` on numeric cells.
 
-`emit` escapes format-sensitive characters in token text, headings, captions, and unit identifiers. The output is intended to be directly usable as a first publication table and easy to refine with CSS or LaTeX formatting later.
+`emit` escapes format-sensitive characters in token text, headings, captions, and unit identifiers.
 
 ### Preserve Unix-stage decisions
 
@@ -551,8 +610,6 @@ sort -t $'\t' -k11,11gr result.tsv \
   | head -20 \
   | ./emit -c config/emit-table.config -T tex
 ```
-
-Thus the paper can state both the numerical condition and the presentation limit without hiding either inside the formatter.
 
 ## DISPLAY FILTERS
 
@@ -569,7 +626,7 @@ These filters are applied before incident nodes, degree, and font-size normaliza
 
 ## GRAPHVIZ GRAPH SETTINGS
 
-The `dot` object controls graph-level DOT syntax and attributes.
+The `dot` object controls graph-level DOT syntax and attributes. Most settings in this object affect only DOT output. The `directed` value is also used by D3 output.
 
 ### `graph_name`
 
@@ -585,7 +642,9 @@ The value is safely quoted and used as the DOT graph identifier.
 "directed": false
 ```
 
-`false` writes an undirected `graph` with `--`. `true` writes a `digraph` with `->`. This affects serialization only; `emit` does not reinterpret upstream pair direction.
+For DOT, `false` writes an undirected `graph` with `--`; `true` writes a `digraph` with `->`.
+
+For D3, `true` draws arrow markers at link targets. This affects serialization and display only; `emit` does not reinterpret upstream pair direction.
 
 ### `charset`
 
@@ -593,7 +652,7 @@ The value is safely quoted and used as the DOT graph identifier.
 "charset": "UTF-8"
 ```
 
-Writes the Graphviz `charset` graph attribute.
+Writes the Graphviz `charset` graph attribute. D3 HTML is always written with UTF-8 metadata.
 
 ### `overlap`
 
@@ -601,7 +660,7 @@ Writes the Graphviz `charset` graph attribute.
 "overlap": false
 ```
 
-Writes a boolean Graphviz `overlap` attribute. The layout engine determines the exact overlap-removal behavior.
+Writes a boolean Graphviz `overlap` attribute. It does not control the D3 force simulation.
 
 ### `outputorder`
 
@@ -609,7 +668,7 @@ Writes a boolean Graphviz `overlap` attribute. The layout engine determines the 
 "outputorder": "edgesfirst"
 ```
 
-Controls Graphviz drawing order. `edgesfirst` commonly keeps node labels visually above edges.
+Controls Graphviz drawing order. It does not affect D3 output.
 
 ### Graph font
 
@@ -617,9 +676,7 @@ Controls Graphviz drawing order. `edgesfirst` commonly keeps node labels visuall
 "fontname": "Noto Serif CJK JP"
 ```
 
-Writes the graph-level `fontname` attribute. This applies to graph labels and other graph-level text. Node and edge fonts are configured independently.
-
-The named font must be visible to the Graphviz installation. `emit` quotes the name correctly but does not install or embed the font.
+Writes the graph-level Graphviz `fontname` attribute. D3 version 0.8.0 uses its built-in CSS font stack and does not use this setting.
 
 ### `sep`
 
@@ -627,7 +684,7 @@ The named font must be visible to the Graphviz installation. `emit` quotes the n
 "sep": "+8"
 ```
 
-Writes the Graphviz `sep` attribute. It supplies additional separation used by overlap removal. It is stored as a string so values such as `+8` remain intact.
+Writes the Graphviz `sep` attribute. It does not affect D3 output.
 
 ### `pack` and `packmode`
 
@@ -636,7 +693,7 @@ Writes the Graphviz `sep` attribute. It supplies additional separation used by o
 "packmode": "graph"
 ```
 
-These attributes control packing of disconnected components. They are useful when many small island components would otherwise occupy excessive space.
+These attributes control Graphviz packing of disconnected components. They do not affect D3 output.
 
 ### `splines`
 
@@ -644,9 +701,7 @@ These attributes control packing of disconnected components. They are useful whe
 "splines": "line"
 ```
 
-Writes the Graphviz `splines` attribute as a quoted string. Common values include `line`, `polyline`, `curved`, `ortho`, and `spline`; support depends on the selected Graphviz engine.
-
-If `fontname`, `sep`, `pack`, `packmode`, or `splines` is omitted, `emit` omits that DOT attribute and leaves the choice to Graphviz.
+Writes the Graphviz `splines` attribute. D3 version 0.8.0 draws straight SVG lines.
 
 ## NODE SETTINGS
 
@@ -656,7 +711,7 @@ If `fontname`, `sep`, `pack`, `packmode`, or `splines` is omitted, `emit` omits 
 "shape": "oval"
 ```
 
-Writes the Graphviz node `shape` attribute.
+Writes the Graphviz node `shape` attribute. D3 version 0.8.0 draws circular nodes and does not use this setting.
 
 ### Node font
 
@@ -664,7 +719,7 @@ Writes the Graphviz node `shape` attribute.
 "fontname": "Noto Serif CJK JP"
 ```
 
-Writes the node-level Graphviz `fontname` attribute. It controls visible node labels.
+Writes the Graphviz node `fontname` attribute. D3 version 0.8.0 does not use this setting.
 
 ### `label_fields`
 
@@ -679,6 +734,8 @@ The older singular setting remains accepted:
 ```json
 "label_field": 1
 ```
+
+The resulting label is used in JSON, DOT, and D3 output.
 
 ### `label_separator`
 
@@ -698,7 +755,7 @@ Accepted values are:
 
 | Value | Meaning |
 | --- | --- |
-| `fq` | local token frequency in the key-selected set; reproduces the intention of the earlier `cw.c` visualization |
+| `fq` | local token frequency in the key-selected set |
 | `idf` | global token weight |
 | `degree` | number of retained displayed edges incident to the node |
 
@@ -708,6 +765,8 @@ The minimum and maximum values among the retained nodes are linearly mapped to:
 "min_font_size": 7,
 "max_font_size": 32
 ```
+
+The calculated font size is used by JSON, DOT, and D3 output. D3 also derives its circle radius and collision spacing from this value.
 
 If every retained node has the same source value, the midpoint of the configured font-size range is used.
 
@@ -721,7 +780,7 @@ Changing font-size mode changes presentation, not CW or Z.
 "fontname": "Noto Serif CJK JP"
 ```
 
-Writes the edge-level Graphviz `fontname` attribute and controls visible edge labels.
+Writes the Graphviz edge `fontname` attribute. D3 version 0.8.0 does not draw visible edge labels and does not use this setting.
 
 ### `label`
 
@@ -731,7 +790,7 @@ Writes the edge-level Graphviz `fontname` attribute and controls visible edge la
 
 Accepted values are:
 
-| Value | Visible edge label |
+| Value | Visible DOT edge label |
 | --- | --- |
 | `none` | no visible label |
 | `ctf` | CTF |
@@ -739,7 +798,9 @@ Accepted values are:
 | `cw` | CW with six significant digits |
 | `z` | Z with six significant digits |
 
-Full-precision CW and Z remain stored as custom DOT attributes.
+When CW or Z is selected as the visible DOT label, it is written with six significant digits. Full-precision values remain available in the DOT tooltip when the corresponding tooltip fields are enabled.
+
+D3 version 0.8.0 does not draw edge text labels. Edge statistics are available in the link tooltip.
 
 ### `tooltip`
 
@@ -747,7 +808,9 @@ Full-precision CW and Z remain stored as custom DOT attributes.
 "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"]
 ```
 
-Accepted entries are `ctf`, `cdf`, `cw`, `z`, and `unit_ids`. An empty array disables edge tooltips.
+For DOT, accepted entries are `ctf`, `cdf`, `cw`, `z`, and `unit_ids`. An empty array disables DOT edge tooltips.
+
+D3 version 0.8.0 always includes source, target, CTF, CDF, CW, Z, and unit identifiers in the link tooltip; the `edge.tooltip` array does not yet customize it.
 
 ### `penwidth`
 
@@ -755,7 +818,7 @@ Accepted entries are `ctf`, `cdf`, `cw`, `z`, and `unit_ids`. An empty array dis
 "penwidth": 1.0
 ```
 
-Sets one Graphviz `penwidth` for all edges. The value must be greater than zero.
+Sets one Graphviz `penwidth` for all edges. D3 version 0.8.0 does not use this value; it maps absolute Z to an internal link-width range.
 
 ### `length`
 
@@ -763,21 +826,23 @@ Sets one Graphviz `penwidth` for all edges. The value must be greater than zero.
 "length": 1.4
 ```
 
-Writes Graphviz edge attribute `len`. For `neato`, this is the preferred edge length in inches. It is a layout preference, not a guaranteed geometric distance.
+For DOT, this writes the Graphviz edge attribute `len`. For `neato`, it is a preferred edge length in inches.
 
-The alias `len` is also accepted in the JSON configuration:
+The alias `len` is also accepted:
 
 ```json
 "len": 1.4
 ```
 
-If neither key is present, no `len` attribute is emitted.
+For D3, the configured value is reused as a proportional force-link distance hint. It is not interpreted as a browser measurement in inches.
 
-## SAFE DOT SERIALIZATION
+If neither key is present, DOT omits `len` and D3 uses its internal default link distance.
 
-`emit` handles Graphviz syntax rather than requiring users to compose DOT manually.
+## SAFE SERIALIZATION
 
-It safely quotes and escapes:
+`emit` handles target syntax rather than requiring users to compose DOT, JSON, HTML, or JavaScript data manually.
+
+DOT output safely quotes and escapes:
 
 - graph names;
 - node identifiers and labels;
@@ -786,25 +851,11 @@ It safely quotes and escapes:
 - separation and spline settings;
 - tooltips and unit identifiers.
 
-Floating-point custom attributes are quoted. This avoids a DOT parsing ambiguity for values written in scientific notation with a negative exponent, such as:
+DOT string attributes are quoted and escaped. Numeric values such as font size, pen width, and preferred edge length are written as numeric DOT attributes.
 
-```text
--2.6946750088283494e-05
-```
+JSON and D3 output escape control characters, quotation marks, backslashes, and other syntax-sensitive text. D3 data serialization also writes `<` as a Unicode escape so token text cannot prematurely open or close HTML markup inside the embedded script.
 
-A generated header may look like:
-
-```dot
-graph "G" {
-  graph [charset="UTF-8", overlap=false, outputorder="edgesfirst",
-         fontname="Noto Serif CJK JP", sep="+8", pack=true,
-         packmode="graph", splines="line"];
-  node [shape="oval", fontname="Noto Serif CJK JP"];
-  edge [penwidth="1", fontname="Noto Serif CJK JP", len="1.4"];
-}
-```
-
-The actual serializer writes each attribute statement on one line.
+Table output applies Markdown-, LaTeX-, or HTML-specific escaping.
 
 ## JSON OUTPUT
 
@@ -816,14 +867,76 @@ emit -T json
 
 The output contains:
 
-- effective display filters;
-- output and label settings;
-- font-size mode and calculated node font sizes;
-- effective Graphviz font and layout settings;
-- node IDs, labels, fields, DF, IDF, FQ, degree, and font size;
-- edge CTF, CDF, CW, Z, and unit identifiers.
+- the `cw-tools/graph` format identifier and schema version;
+- the configuration path and selected output format;
+- node label fields, label separator, and font-size mode;
+- the directed/undirected flag;
+- node IDs, labels, token fields, DF, IDF, FQ, degree, and calculated font size;
+- edge source, target, CTF, CDF, endpoint DF/IDF/FQ values, CW, Z, and unit identifiers.
 
-JSON is intended as reusable research data. DOT is a visualization description; SVG, PDF, and PNG are rendered products.
+Version 0.8.0 JSON output does not serialize the complete effective configuration or the active filter thresholds.
+
+JSON is intended as reusable research data. DOT is a visualization description; D3 is an interactive browser document; SVG, PDF, and PNG are rendered products.
+
+## D3 OUTPUT
+
+### Select D3 output
+
+```sh
+emit -T d3 result.tsv > graph.html
+firefox graph.html
+```
+
+D3 output is a complete HTML document rather than an HTML table fragment.
+
+### Interactive behavior
+
+The generated page provides:
+
+- a force-directed network layout calculated in the browser;
+- wheel or gesture zooming;
+- panning by dragging the background;
+- node dragging;
+- node tooltips containing label, complete identifier, DF, IDF, FQ, and displayed degree;
+- edge tooltips containing source, target, CTF, CDF, CW, Z, and unit identifiers;
+- target arrows when `dot.directed` is `true`;
+- node label sizes calculated from the ordinary node font-size settings;
+- edge width mapped from absolute Z.
+
+The graph data, CSS, and interaction code are embedded in the generated document.
+
+### External D3 dependency
+
+Version 0.8.0 loads D3 version 7 from:
+
+```text
+https://cdn.jsdelivr.net/npm/d3@7
+```
+
+Therefore the page normally requires network access when opened. The data itself remains in the generated HTML file, but the interactive graph cannot start unless the D3 library is available from the CDN or the browser cache.
+
+### Settings reused by D3
+
+| Configuration setting | D3 effect in version 0.8.0 |
+| --- | --- |
+| `filters.min_cw`, `filters.min_z` | selects emitted links before graph construction |
+| `dot.directed` | enables target arrows |
+| `node.label_fields` | constructs visible node text |
+| `node.label_separator` | joins selected label fields |
+| `node.font_size_by` | selects FQ, IDF, or degree for label size |
+| `node.min_font_size`, `node.max_font_size` | defines the calculated label-size range |
+| `edge.length` or `edge.len` | supplies a proportional force-link distance hint |
+
+### Settings not yet reused by D3
+
+The following remain DOT- or table-specific in version 0.8.0:
+
+- `dot.graph_name`, `charset`, `overlap`, `outputorder`, `fontname`, `sep`, `pack`, `packmode`, and `splines`;
+- `node.shape` and `node.fontname`;
+- `edge.fontname`, `edge.label`, `edge.tooltip`, and `edge.penwidth`;
+- all `table` settings.
+
+D3-specific force, collision, zoom, color, font, and edge-width settings are fixed internally in version 0.8.0. They can be evaluated through actual use before a later version exposes a stable `d3` configuration object.
 
 ## OPTIONS
 
@@ -833,7 +946,7 @@ Read `FILE` instead of `config/emit-config.json`.
 
 ### `-T FORMAT`, `--format FORMAT`
 
-Temporarily select `json`, `dot`, `md`, `tex`, or `html`. The aliases `markdown` and `latex` are accepted.
+Temporarily select `json`, `dot`, `md`, `tex`, `html`, or `d3`. The aliases `markdown` and `latex` are accepted.
 
 ### `-W VALUE`, `--min-cw VALUE`
 
@@ -852,12 +965,14 @@ Display a usage summary and exit.
 Display:
 
 ```text
-emit 0.7.0
+emit 0.8.0
 ```
 
 ## RENDERING
 
-`emit` writes DOT but does not invoke a Graphviz layout engine. The configuration records Graphviz attributes so the user need not repeat them as command-line options.
+### Graphviz rendering
+
+`emit` writes DOT but does not invoke a Graphviz layout engine:
 
 ```sh
 ./cw ... | ./emit > graph.dot
@@ -877,11 +992,22 @@ Other devices remain the renderer's responsibility:
 ./emit < graph.tsv | neato -Tpng > graph.png
 ```
 
-Likewise, choosing `neato`, `dot`, or `sfdp` remains explicit because the layout algorithm is a substantive visualization choice. The repetitive and error-prone DOT attribute syntax belongs to `emit`.
+Choosing `neato`, `dot`, or `sfdp` remains explicit because the layout algorithm is a substantive visualization choice.
+
+### D3 rendering
+
+D3 output is opened directly in a web browser:
+
+```sh
+./emit -T d3 graph.tsv > graph.html
+firefox graph.html
+```
+
+No Graphviz process is involved. The browser calculates the force layout at page load.
 
 ## EXAMPLES
 
-### M16 graph with configured formatting
+### M16 graph with configured Graphviz formatting
 
 ```sh
 grep '^1' tests/data/hachidaishu-pair.txt \
@@ -891,13 +1017,23 @@ grep '^1' tests/data/hachidaishu-pair.txt \
   | neato -Tsvg > ume.svg
 ```
 
+### Interactive D3 graph from the same data
+
+```sh
+grep '^1' tests/data/hachidaishu-pair.txt \
+  | ./pair \
+  | ./cw -p 2,3 -k '^梅/名$' -M 16 \
+  | ./emit -T d3 > ume.html
+
+firefox ume.html
+```
+
 ### Exclude a category before graph construction
 
 ```sh
 ./cw ... \
   | awk -F '\t' '$1 !~ /\/格助\// && $2 !~ /\/格助\//' \
-  | ./emit \
-  | neato -Tsvg > content-patterns.svg
+  | ./emit -T d3 > content-patterns.html
 ```
 
 ### Compare FQ, IDF, and degree font sizing
@@ -923,26 +1059,10 @@ Then reuse one measured table:
 ./emit -c config/emit-fq.json measured.tsv | neato -Tsvg > fq.svg
 ./emit -c config/emit-idf.json measured.tsv | neato -Tsvg > idf.svg
 ./emit -c config/emit-degree.json measured.tsv | neato -Tsvg > degree.svg
-```
 
-### Keep island components compact
-
-```json
-"dot": {
-  "overlap": false,
-  "sep": "+8",
-  "pack": true,
-  "packmode": "graph"
-}
-```
-
-### Inspect Graphviz font resolution
-
-`emit` writes the requested family name. To inspect what Graphviz resolves on the local machine:
-
-```sh
-fc-match "Noto Serif CJK JP"
-neato -v -Tsvg graph.dot -o graph.svg 2>&1 | grep -i font
+./emit -c config/emit-fq.json -T d3 measured.tsv > fq.html
+./emit -c config/emit-idf.json -T d3 measured.tsv > idf.html
+./emit -c config/emit-degree.json -T d3 measured.tsv > degree.html
 ```
 
 ### Produce the same publication table in three formats
@@ -963,8 +1083,6 @@ sort -t $'\t' -k12,12gr ume.tsv \
   | ./emit -c config/emit-table.config -T tex > ume-top10.tex
 ```
 
-The sort key, row limit, selected columns, labels, and numerical precision are all inspectable parts of the research record.
-
 ## EXIT STATUS
 
 `emit` exits successfully after producing output. It exits with failure for conditions such as:
@@ -974,24 +1092,77 @@ The sort key, row limit, selected columns, labels, and numerical precision are a
 - malformed or inconsistent TSV input;
 - invalid option arguments;
 - nonpositive font sizes, pen width, or edge length;
-- unavailable `fq` when `font_size_by` is `fq`.
+- unavailable `fq` when `font_size_by` is `fq` for JSON, DOT, or D3 output;
+- more table headers than selected table columns;
+- output write errors.
 
 Diagnostics are written to standard error.
 
 ## CURRENT LIMITATIONS
 
-Version 0.7.0 intentionally leaves several responsibilities outside `emit`:
+Version 0.8.0 intentionally leaves several responsibilities outside `emit`:
 
-1. It does not invoke `neato`, `dot`, `sfdp`, or another renderer.
-2. It does not implement graph-structural pruning such as component size or k-core selection.
-3. It supports boolean `overlap`; nonboolean Graphviz overlap modes are not represented.
-4. It does not map edge width, color, or style to CW, Z, or frequency.
+1. DOT output does not invoke `neato`, `dot`, `sfdp`, or another renderer.
+2. It does not implement graph-structural pruning such as component-size or k-core selection.
+3. DOT supports boolean `overlap`; nonboolean Graphviz overlap modes are not represented.
+4. DOT does not map edge width, color, or style to CW, Z, or frequency.
 5. Font names are passed to Graphviz but fonts are not installed or embedded.
 6. Unknown configuration keys are ignored, so spelling mistakes may leave a default unchanged.
-7. It trusts `cdf` after verifying only that `cdf <= ctf`.
+7. It does not yet validate `ctf > 0`, `cdf <= ctf`, nonempty identifiers, or agreement between `ctf` and the number of unit identifiers.
 8. Table output deliberately uses plain Markdown, standard LaTeX `tabular`, and an HTML fragment; advanced pagination, long tables, CSS, and journal-specific styling remain later formatting steps.
+9. D3 output requires D3 version 7 from an external CDN unless the browser already has it cached.
+10. D3-specific simulation, color, font, zoom, tooltip selection, and edge-width settings are not configurable in version 0.8.0.
+11. D3 output does not yet reuse Graphviz node shape, font, edge-label, tooltip-selection, or pen-width settings.
+12. D3 output is an interactive browser view, not a stable publication layout comparable to a rendered Graphviz PDF or SVG.
 
 These are presentation and validation limitations. They do not affect measurements already calculated by `cw`.
+
+## IMPLEMENTATION LAYOUT
+
+Version 0.8.0 builds one `emit` executable from the following modules:
+
+```text
+src/emit.c
+    command-line parsing
+    JSON configuration parsing
+    TSV input and validation
+    filtering, node construction, degree calculation
+    output-format dispatch
+
+src/emit-types.h
+    shared graph and configuration types
+
+src/emit-util.c
+src/emit-util.h
+    allocation helpers
+    token-field selection
+    node-label construction
+    node-weight and font-size calculation
+
+src/emit-json.c
+src/emit-json.h
+    reusable graph JSON output
+
+src/emit-dot.c
+src/emit-dot.h
+    Graphviz DOT output
+
+src/emit-tables.c
+src/emit-tables.h
+    Markdown, LaTeX, and HTML table output
+
+src/emit-d3.c
+src/emit-d3.h
+    interactive D3 HTML output
+```
+
+The Makefile compiles these modules separately and links them into one command:
+
+```text
+emit
+```
+
+The module boundary is an implementation detail. Users do not invoke `emit-dot`, `emit-json`, `emit-tables`, or `emit-d3` as separate commands.
 
 ## DESIGN PRINCIPLE
 
@@ -1000,7 +1171,8 @@ Two complementary rules define `emit`:
 ```text
 Do not reimplement ordinary line filtering that Unix already performs well.
 
-Do not require researchers to write or debug Graphviz or publication-table syntax by hand.
+Do not require researchers to write or debug Graphviz, publication-table,
+or interactive graph serialization syntax by hand.
 ```
 
 Accordingly:
@@ -1013,16 +1185,17 @@ researcher-visible analytical choices
     row-selection conditions
     visible labels
     display weight
+    static or interactive output choice
 
 formatter responsibilities
-    DOT quoting and escaping
+    target-specific quoting and escaping
     scientific-number safety
-    graph/node/edge font attributes
+    graph/node/edge display attributes
     Graphviz layout hints
-    JSON and DOT serialization
+    JSON, DOT, table, and D3 serialization
 ```
 
-This division keeps the analytical record understandable while making graph production reliable and repeatable.
+This division keeps the analytical record understandable while making graph and table production reliable and repeatable.
 
 ## FILES
 
@@ -1034,15 +1207,28 @@ Default configuration.
 
 ```text
 src/emit.c
+src/emit-types.h
+src/emit-util.c
+src/emit-util.h
+src/emit-json.c
+src/emit-json.h
+src/emit-dot.c
+src/emit-dot.h
+src/emit-tables.c
+src/emit-tables.h
+src/emit-d3.c
+src/emit-d3.h
 ```
 
-Program source.
+Program sources.
 
 ```text
 docs/man-emit.md
 ```
 
 This manual.
+
+No `config/emit-d3.json` file is required by version 0.8.0.
 
 ## SEE ALSO
 
@@ -1052,3 +1238,4 @@ This manual.
 - `grep(1)`
 - `awk(1)`
 - Graphviz `neato`, `dot`, and `sfdp`
+- D3.js version 7

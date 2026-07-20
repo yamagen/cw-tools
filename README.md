@@ -32,7 +32,7 @@ unit-based token data
 ```
 
 The project is designed as **digital humanities that works alongside the
-researcher** (_寄り添うDH_):
+researcher** (_yorisou DH_):
 
 > The computer should not replace the researcher's decisions. It should make
 > those decisions executable, inspectable, citable, and reproducible.
