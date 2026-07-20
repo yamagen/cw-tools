@@ -603,7 +603,10 @@ probabilities are inflated. Without `<BOS>`, initial position is lost.
 The intended forward transition probability is:
 
 $$
-P*S(y\mid x) = \frac{\operatorname{af}*{S}(x,y)} {\sum*{y'}\operatorname{af}*{S}(x,y')}.
+P_S(y \mid x)
+=
+\frac{\mathrm{af}_S(x,y)}
+{\sum_{y'} \mathrm{af}_S(x,y')}
 $$
 
 A later CM weight can combine the local directed transition probability with
