@@ -282,9 +282,7 @@ df_C(t) = number of units in C containing t
 $$
 \mathrm{df}_{C}(t)
 =
-\left\lvert
-\left\{u \in C : t \in u\right\}
-\right\rvert
+| \left\{u \in C : t \in u\right\} |
 $$
 
 Global inverse document frequency is:
