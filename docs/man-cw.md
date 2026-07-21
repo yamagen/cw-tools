@@ -315,8 +315,6 @@ gdf_C(t1,t2) = number of units in C containing the pair
 \left|\{u \in C : (t_1,t_2) \in u\}\right|
 ```
 
-````math
-
 Method 16 uses this value to measure how unusual the combination itself is in
 the global corpus.
 
@@ -333,7 +331,7 @@ The selected unit set is:
 
 ```text
 S_r = units containing at least one pattern matching r
-````
+```
 
 ```math
 S_r
