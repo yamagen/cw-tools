@@ -2,6 +2,12 @@
 
 Last updated: 2026/07/20-09:31:54.
 
+<p align="center">
+  <img src="docs/images/cw-tools-social-preview.png"
+       alt="cw-tools: Unix filters, Pair-Pack Distribution, and pairwise text-data analysis"
+       width="85%">
+</p>
+
 Hilofumi Yamamoto, Ph.D.  
 Institute of Science Tokyo
 
