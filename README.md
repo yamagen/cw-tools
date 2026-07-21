@@ -302,7 +302,8 @@ For publication and reproducibility, specify the method explicitly:
 Method 16 is:
 
 $$
-CW_{16}(t_1,t_2;S,C) =
+CW_{16}(t_1,t_2;S,C)
+=
 \left( 1+\ln \mathrm{ctf}_{S}(t_1,t_2) \right)
 \sqrt{ \mathrm{idf}_{C}(t_1)\hspace{.2em}\mathrm{idf}_{C}(t_2) }
 \left( 1+ \ln \left( \frac{N}{\mathrm{gdf}_{C}(t_1,t_2)} \right) \right)
