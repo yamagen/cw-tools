@@ -290,11 +290,7 @@ idf_C(t) = ln(N / df_C(t))
 ```
 
 $$
-\mathrm{idf}_{C}(t)
-=
-\ln\!\left(
-\frac{N}{\mathrm{df}_{C}(t)}
-\right)
+\mathrm{idf}_{C}(t) = \ln\!\left( \frac{N}{\mathrm{df}_{C}(t)} \right)
 $$
 
 `cw` uses the natural logarithm and floating-point division. No additive
