@@ -259,16 +259,15 @@ Pattern identity is therefore independent of visible labeling.
 ### Global and local reference sets
 
 Let:
-
-| Symbol                               | Meaning                                              |
-| ------------------------------------ | ---------------------------------------------------- | --- | -------------------------------------- |
-| \(C\)                                | complete input corpus                                |
-| \(N=                                 | C                                                    | \)  | number of units in the complete corpus |
-| \(S\)                                | selected local unit set; \(S=C\) when `-k` is absent |
-| \(\operatorname{df}\_{C}(t)\)        | global unit frequency of pattern \(t\)               |
-| \(\operatorname{idf}\_{C}(t)\)       | global inverse document frequency of pattern \(t\)   |
-| \(\operatorname{gdf}\_{C}(t_1,t_2)\) | global unit frequency of the pair                    |
-| \(\operatorname{ctf}\_{S}(t_1,t_2)\) | retained local pair frequency                        |
+| Symbol | Meaning |
+| ------------------------------------ | ---------------------------------------------------- |
+| \(C\) | complete input corpus |
+| \(N=\lvert C\rvert\) | number of units in the complete corpus |
+| \(S\) | selected local unit set; \(S=C\) when `-k` is absent |
+| \(\operatorname{df}_{C}(t)\) | global unit frequency of pattern \(t\) |
+| \(\operatorname{idf}_{C}(t)\) | global inverse document frequency of pattern \(t\) |
+| \(\operatorname{gdf}_{C}(t_1,t_2)\) | global unit frequency of the pair |
+| \(\operatorname{ctf}_{S}(t_1,t_2)\) | retained local pair frequency |
 
 The key option defines the local observation set without changing the global
 IDF reference:
