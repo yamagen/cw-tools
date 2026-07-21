@@ -280,7 +280,7 @@ df_C(t) = number of units in C containing t
 ```
 
 $$
-\operatorname{df}_{C}(t)
+\mathrm{df}_{C}(t)
 =
 \left\lvert
 \left\{u \in C : t \in u\right\}
@@ -294,9 +294,9 @@ idf_C(t) = ln(N / df_C(t))
 ```
 
 $$
-\operatorname{idf}_{C}(t)
+\mathrm{idf}_{C}(t)
 =
-\ln\!\left(\frac{N}{\operatorname{df}_{C}(t)}\right)
+\ln\!\left(\frac{N}{\mathrm{df}_{C}(t)}\right)
 $$
 
 `cw` uses the natural logarithm and floating-point division. No additive
@@ -314,7 +314,7 @@ gdf_C(t1,t2) = number of units in C containing the pair
 ```
 
 $$
-\operatorname{gdf}_{C}(t_1,t_2)
+\mathrm{gdf}_{C}(t_1,t_2)
 =
 \left|\{u \in C : (t_1,t_2) \in u\}\right|
 $$
@@ -402,20 +402,20 @@ For an exact key expression such as:
 
 The citation-ready formulas use the following symbols:
 
-| Symbol                               | Meaning                                             |
-| ------------------------------------ | --------------------------------------------------- |
-| \(C\)                                | complete input corpus                               |
-| \(N=\lvert C\rvert\)                 | number of units in the complete corpus              |
-| \(S\)                                | current local unit set; \(S=C\) when `-k` is absent |
-| \(S_r\)                              | units selected by key regular expression \(r\)      |
-| \(\operatorname{df}\_{C}(t)\)        | global unit frequency of pattern \(t\)              |
-| \(\operatorname{idf}\_{C}(t)\)       | global inverse document frequency of pattern \(t\)  |
-| \(\operatorname{gdf}\_{C}(t_1,t_2)\) | global unit frequency of pair \((t_1,t_2)\)         |
-| \(\operatorname{ctf}\_{S}(t_1,t_2)\) | retained local pair frequency in \(S\)              |
-| \(\operatorname{fq}\_{S_r}(r)\)      | local frequency of patterns matching key \(r\)      |
+| Symbol                       | Meaning                                           |
+| ---------------------------- | ------------------------------------------------- |
+| $C$                          | complete input corpus                             |
+| $N=\lvert C\rvert$           | number of units in the complete corpus            |
+| $S$                          | current local unit set; $S=C$ when `-k` is absent |
+| $S_r$                        | units selected by key regular expression $r$      |
+| $\mathrm{df}\_{C}(t)$        | global unit frequency of pattern $t$              |
+| $\mathrm{idf}\_{C}(t)$       | global inverse document frequency of pattern $t$  |
+| $\mathrm{gdf}\_{C}(t_1,t_2)$ | global unit frequency of pair $(t_1,t_2)$         |
+| $\mathrm{ctf}\_{S}(t_1,t_2)$ | retained local pair frequency in $S$              |
+| $\mathrm{fq}\_{S_r}(r)$      | local frequency of patterns matching key $r$      |
 
 Under the current per-unit pair-counting rule,
-\(\operatorname{ctf}\_{S}(t_1,t_2)\) is numerically equal to the local pair DF,
+$\mathrm{ctf}\_{S}(t_1,t_2)$ is numerically equal to the local pair DF,
 although the historical name `ctf` is retained in the output interface.
 
 ## CW METHODS
@@ -438,7 +438,7 @@ w_token = sqrt(idf1 * idf2)
 $$
 w_{\mathrm{token}}(t_1,t_2)
 =
-\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
+\sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
 $$
 
 This geometric mean combines the global weights of the two projected patterns.
@@ -452,8 +452,8 @@ CW_1 = (1 + ln(ctf)) * sqrt(idf1 * idf2)
 $$
 CW_{1}(t_1,t_2)
 =
-\left(1+\ln \operatorname{ctf}_{S}(t_1,t_2)\right)
-\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
+\left(1+\ln \mathrm{ctf}_{S}(t_1,t_2)\right)
+\sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
 $$
 
 Usage:
@@ -482,10 +482,10 @@ $$
 CW_{7}(t_1,t_2\mid r)
 =
 \frac{
-\left(1+\log_{10}\operatorname{ctf}_{S_r}(t_1,t_2)\right)
-\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
+\left(1+\log_{10}\mathrm{ctf}_{S_r}(t_1,t_2)\right)
+\sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
 }{
-1+\log_{10}\operatorname{fq}_{S_r}(r)
+1+\log_{10}\mathrm{fq}_{S_r}(r)
 }
 $$
 
@@ -526,11 +526,11 @@ CW_{12}(t_1,t_2\mid r)
 \left(
 1+
 \left\lfloor
-\frac{\operatorname{fq}_{S_r}(r)}
-     {\operatorname{ctf}_{S_r}(t_1,t_2)}
+\frac{\mathrm{fq}_{S_r}(r)}
+     {\mathrm{ctf}_{S_r}(t_1,t_2)}
 \right\rfloor
 \right)
-\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
+\sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
 $$
 
 Usage:
@@ -561,12 +561,12 @@ CW_{16}(t_1,t_2\mid S)
 \left(
 1+
 \ln\!\left(
-\frac{N}{\operatorname{gdf}_{C}(t_1,t_2)}
+\frac{N}{\mathrm{gdf}_{C}(t_1,t_2)}
 \right)
 \right)
-\sqrt{\operatorname{idf}_{C}(t_1)\operatorname{idf}_{C}(t_2)}
+\sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
 \left(
-1+\ln \operatorname{ctf}_{S}(t_1,t_2)
+1+\ln \mathrm{ctf}_{S}(t_1,t_2)
 \right)
 $$
 
