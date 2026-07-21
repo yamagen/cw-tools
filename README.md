@@ -302,7 +302,7 @@ For publication and reproducibility, specify the method explicitly:
 Method 16 is:
 
 $$
-CW_{16}(t_1,t_2;S,C) = \left( 1+ \ln \left( \frac{N}{\mathrm{gdf}_{C}(t_1,t_2)} \right) \right) \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) } \left( 1+\ln \mathrm{ctf}_{S}(t_1,t_2) \right).
+CW_{16}(t_1,t_2;S,C) = \left( 1+ \ln \left( \frac{N}{\mathrm{gdf}_{C}(t_1,t_2)} \right) \right) \sqrt{ \mathrm{idf}_{C}(t_1)\;\mathrm{idf}_{C}(t_2) } \left( 1+\ln \mathrm{ctf}_{S}(t_1,t_2) \right).
 $$
 
 It combines three kinds of evidence:
