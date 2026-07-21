@@ -279,9 +279,9 @@ For a projected pattern `t`, global document frequency is:
 df_C(t) = number of units in C containing t
 ```
 
-```math
+$$
 \mathrm{df}_{C}(t) = | \{u \in C : t \in u\} |
-```
+$$
 
 Global inverse document frequency is:
 
