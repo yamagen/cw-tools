@@ -283,12 +283,12 @@ and pair is still weighted against the full corpus.
 
 `cw` currently implements four historical and explanatory methods:
 
-| Method | Main purpose                                                |
-| -----: | ----------------------------------------------------------- |
-|    `1` | compact explanation of the basic CW principle               |
-|    `7` | historically adjusted waka-graph formula; current default   |
-|   `12` | experimental weighting of locally rare patterns             |
-|   `16` | global token weight × global pair weight × local repetition |
+| Method | Main purpose                                              |
+| -----: | --------------------------------------------------------- |
+|    `1` | compact explanation of the basic CW principle             |
+|    `7` | historically adjusted waka-graph formula; current default |
+|   `12` | experimental weighting of locally rare patterns           |
+|   `16` | local repetition ×global pair weight ×global token weight |
 
 For publication and reproducibility, specify the method explicitly:
 
