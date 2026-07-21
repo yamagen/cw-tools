@@ -267,9 +267,9 @@ Let `C` be the complete set of input units and:
 N = |C|
 ```
 
-$$
+```math
 N = |C|
-$$
+```
 
 ### Global token statistics
 
@@ -309,11 +309,13 @@ For a projected pair `(t1,t2)`, global pair document frequency is:
 gdf_C(t1,t2) = number of units in C containing the pair
 ```
 
-$$
+```math
 \mathrm{gdf}_{C}(t_1,t_2)
 =
 \left|\{u \in C : (t_1,t_2) \in u\}\right|
-$$
+```
+
+````math
 
 Method 16 uses this value to measure how unusual the combination itself is in
 the global corpus.
@@ -331,13 +333,13 @@ The selected unit set is:
 
 ```text
 S_r = units containing at least one pattern matching r
-```
+````
 
-$$
+```math
 S_r
 =
 \{u \in C : \exists t \in u,\; t \models r\}
-$$
+```
 
 Every pair occurring in a selected unit is included. `-k` therefore selects
 units; it does not merely retain edges directly touching the key.
@@ -431,11 +433,11 @@ Let:
 w_token = sqrt(idf1 * idf2)
 ```
 
-$$
+```math
 w_{\mathrm{token}}(t_1,t_2)
 =
 \sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
-$$
+```
 
 This geometric mean combines the global weights of the two projected patterns.
 
@@ -445,12 +447,12 @@ This geometric mean combines the global weights of the two projected patterns.
 CW_1 = (1 + ln(ctf)) * sqrt(idf1 * idf2)
 ```
 
-$$
+```math
 CW_{1}(t_1,t_2)
 =
 \left(1+\ln \mathrm{ctf}_{S}(t_1,t_2)\right)
 \sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
-$$
+```
 
 Usage:
 
@@ -474,7 +476,7 @@ CW_7 = --------------------------------------
                     1 + log10(key_fq)
 ```
 
-$$
+```math
 CW_{7}(t_1,t_2\mid r)
 =
 \frac{
@@ -483,7 +485,7 @@ CW_{7}(t_1,t_2\mid r)
 }{
 1+\log_{10}\mathrm{fq}_{S_r}(r)
 }
-$$
+```
 
 Usage:
 
@@ -516,7 +518,7 @@ CW_12 = (1 + key_fq / ctf) * sqrt(idf1 * idf2)
 
 To express the historical integer quotient explicitly:
 
-$$
+```math
 CW_{12}(t_1,t_2\mid r)
 =
 \left(
@@ -527,7 +529,7 @@ CW_{12}(t_1,t_2\mid r)
 \right\rfloor
 \right)
 \sqrt{\mathrm{idf}_{C}(t_1)\mathrm{idf}_{C}(t_2)}
-$$
+```
 
 Usage:
 
@@ -551,7 +553,7 @@ CW_16 = (1 + ln(N / global_pair_df))
         * (1 + ln(local_ctf))
 ```
 
-$$
+```math
 CW_{16}(t_1,t_2\mid S)
 =
 \left(
@@ -564,7 +566,7 @@ CW_{16}(t_1,t_2\mid S)
 \left(
 1+\ln \mathrm{ctf}_{S}(t_1,t_2)
 \right)
-$$
+```
 
 Usage:
 
@@ -622,11 +624,11 @@ For pair CW value `x`:
 z = (x - mean_selected_cw) / sd_selected_cw
 ```
 
-$$
+```math
 z_i
 =
 \frac{CW_i-\overline{CW}_{S}}{s_{CW,S}}
-$$
+```
 
 The sample standard deviation uses denominator `n - 1`.
 
