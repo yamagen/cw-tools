@@ -308,13 +308,7 @@ gdf_C(t1,t2) = number of units in C containing the pair
 ```
 
 $$
-\mathrm{gdf}_{C}(t_1,t_2)
-=
-\left|
-\left\lbrace
-u \in C : (t_1,t_2) \in u
-\right\rbrace
-\right|
+\mathrm{gdf}_{C}(t_1,t_2) = \left| \left\lbrace u \in C : (t_1,t_2) \in u \right\rbrace \right|
 $$
 
 Method 16 uses this value to measure how unusual the combination itself is in
@@ -336,13 +330,7 @@ S_r = units containing at least one pattern matching r
 ```
 
 $$
-S_r
-=
-\left\lbrace
-u \in C :
-\exists t \in u,\;
-t \models r
-\right\rbrace
+S_r = \left\lbrace u \in C : \exists t \in u,\; t \models r \right\rbrace
 $$
 
 Every pair occurring in a selected unit is included. `-k` therefore selects
@@ -438,12 +426,7 @@ w_token = sqrt(idf1 * idf2)
 ```
 
 $$
-w_{\mathrm{token}}(t_1,t_2)
-=
-\sqrt{
-\mathrm{idf}_{C}(t_1)
-\mathrm{idf}_{C}(t_2)
-}
+w_{\mathrm{token}}(t_1,t_2) = \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) }
 $$
 
 This geometric mean combines the global weights of the two projected patterns.
@@ -455,15 +438,7 @@ CW_1 = (1 + ln(ctf)) * sqrt(idf1 * idf2)
 ```
 
 $$
-CW_{1}(t_1,t_2)
-=
-\left(
-1+\ln \mathrm{ctf}_{S}(t_1,t_2)
-\right)
-\sqrt{
-\mathrm{idf}_{C}(t_1)
-\mathrm{idf}_{C}(t_2)
-}
+CW_{1}(t_1,t_2) = \left( 1+\ln \mathrm{ctf}_{S}(t_1,t_2) \right) \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) }
 $$
 
 Usage:
@@ -489,19 +464,7 @@ CW_7 = --------------------------------------
 ```
 
 $$
-CW_{7}(t_1,t_2\mid r)
-=
-\frac{
-\left(
-1+\log_{10}\mathrm{ctf}_{S_r}(t_1,t_2)
-\right)
-\sqrt{
-\mathrm{idf}_{C}(t_1)
-\mathrm{idf}_{C}(t_2)
-}
-}{
-1+\log_{10}\mathrm{fq}_{S_r}(r)
-}
+CW_{7}(t_1,t_2\mid r) = \frac{ \left( 1+\log_{10}\mathrm{ctf}_{S_r}(t_1,t_2) \right) \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) } }{ 1+\log_{10}\mathrm{fq}_{S_r}(r) }
 $$
 
 Usage:
@@ -536,22 +499,7 @@ CW_12 = (1 + key_fq / ctf) * sqrt(idf1 * idf2)
 To express the historical integer quotient explicitly:
 
 $$
-CW_{12}(t_1,t_2\mid r)
-=
-\left(
-1+
-\left\lfloor
-\frac{
-\mathrm{fq}_{S_r}(r)
-}{
-\mathrm{ctf}_{S_r}(t_1,t_2)
-}
-\right\rfloor
-\right)
-\sqrt{
-\mathrm{idf}_{C}(t_1)
-\mathrm{idf}_{C}(t_2)
-}
+CW_{12}(t_1,t_2\mid r) = \left( 1+ \left\lfloor \frac{ \mathrm{fq}_{S_r}(r) }{ \mathrm{ctf}_{S_r}(t_1,t_2) } \right\rfloor \right) \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) }
 $$
 
 Usage:
@@ -577,26 +525,7 @@ CW_16 = (1 + ln(N / global_pair_df))
 ```
 
 $$
-CW_{16}(t_1,t_2\mid S)
-=
-\left(
-1+
-\ln\!\left(
-\frac{
-N
-}{
-\mathrm{gdf}_{C}(t_1,t_2)
-}
-\right)
-\right)
-\sqrt{
-\mathrm{idf}_{C}(t_1)
-\mathrm{idf}_{C}(t_2)
-}
-\left(
-1+
-\ln \mathrm{ctf}_{S}(t_1,t_2)
-\right)
+CW_{16}(t_1,t_2\mid S) = \left( 1+ \ln\!\left( \frac{ N }{ \mathrm{gdf}_{C}(t_1,t_2) } \right) \right) \sqrt{ \mathrm{idf}_{C}(t_1) \mathrm{idf}_{C}(t_2) } \left( 1+ \ln \mathrm{ctf}_{S}(t_1,t_2) \right)
 $$
 
 Usage:
@@ -656,13 +585,7 @@ z = (x - mean_selected_cw) / sd_selected_cw
 ```
 
 $$
-z_i
-=
-\frac{
-CW_i-\overline{CW}_{S}
-}{
-s_{CW,S}
-}
+z_i = \frac{ CW_i-\overline{CW}_{S} }{ s_{CW,S} }
 $$
 
 The sample standard deviation uses denominator `n - 1`.
