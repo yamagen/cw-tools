@@ -283,6 +283,10 @@ $$
 \mathrm{df}_{C}(t) = | \{u \in C : t \in u\} |
 $$
 
+$$
+\mathrm{df}_{C}(t)=\left|\left\lbrace u \in C : t \in u \right\rbrace\right|
+$$
+
 Global inverse document frequency is:
 
 ```text
