@@ -398,20 +398,20 @@ For an exact key expression such as:
 
 The citation-ready formulas use the following symbols:
 
-| Symbol                       | Meaning                                           |
-| ---------------------------- | ------------------------------------------------- |
-| $C$                          | complete input corpus                             |
-| $N=\lvert C\rvert$           | number of units in the complete corpus            |
-| $S$                          | current local unit set; $S=C$ when `-k` is absent |
-| $S_r$                        | units selected by key regular expression $r$      |
-| $\mathrm{df}\_{C}(t)$        | global unit frequency of pattern $t$              |
-| $\mathrm{idf}\_{C}(t)$       | global inverse document frequency of pattern $t$  |
-| $\mathrm{gdf}\_{C}(t_1,t_2)$ | global unit frequency of pair $(t_1,t_2)$         |
-| $\mathrm{ctf}\_{S}(t_1,t_2)$ | retained local pair frequency in $S$              |
-| $\mathrm{fq}\_{S_r}(r)$      | local frequency of patterns matching key $r$      |
+| Symbol                      | Meaning                                           |
+| --------------------------- | ------------------------------------------------- |
+| $C$                         | complete input corpus                             |
+| $N=\lvert C\rvert$          | number of units in the complete corpus            |
+| $S$                         | current local unit set; $S=C$ when `-k` is absent |
+| $S_r$                       | units selected by key regular expression $r$      |
+| $\mathrm{df}_{C}(t)$        | global unit frequency of pattern $t$              |
+| $\mathrm{idf}_{C}(t)$       | global inverse document frequency of pattern $t$  |
+| $\mathrm{gdf}_{C}(t_1,t_2)$ | global unit frequency of pair $(t_1,t_2)$         |
+| $\mathrm{ctf}_{S}(t_1,t_2)$ | retained local pair frequency in $S$              |
+| $\mathrm{fq}_{S_r}(r)$      | local frequency of patterns matching key $r$      |
 
 Under the current per-unit pair-counting rule,
-$\mathrm{ctf}\_{S}(t_1,t_2)$ is numerically equal to the local pair DF,
+$\mathrm{ctf}_{S}(t_1,t_2)$ is numerically equal to the local pair DF,
 although the historical name `ctf` is retained in the output interface.
 
 ## CW METHODS
