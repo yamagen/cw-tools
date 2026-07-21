@@ -261,13 +261,13 @@ Pattern identity is therefore independent of visible labeling.
 Let:
 | Symbol | Meaning |
 | ------------------------------------ | ---------------------------------------------------- |
-| \(C\) | complete input corpus |
-| \(N=\lvert C\rvert\) | number of units in the complete corpus |
-| \(S\) | selected local unit set; \(S=C\) when `-k` is absent |
-| \(\operatorname{df}_{C}(t)\) | global unit frequency of pattern \(t\) |
-| \(\operatorname{idf}_{C}(t)\) | global inverse document frequency of pattern \(t\) |
-| \(\operatorname{gdf}_{C}(t_1,t_2)\) | global unit frequency of the pair |
-| \(\operatorname{ctf}_{S}(t_1,t_2)\) | retained local pair frequency |
+| $C$ | complete input corpus |
+| $N=\lvert C\rvert$ | number of units in the complete corpus |
+| $S$ | selected local unit set; $(S=C$) when `-k` is absent |
+| $\mathrm{df}_{C}(t)$ | global unit frequency of pattern $t$ |
+| $\mathrm{idf}_{C}(t)$ | global inverse document frequency of pattern $t$ |
+| $\mathrm{gdf}_{C}(t_1,t_2)$ | global unit frequency of the pair |
+| $\mathrm{ctf}_{S}(t_1,t_2)$ | retained local pair frequency |
 
 The key option defines the local observation set without changing the global
 IDF reference:
@@ -301,23 +301,9 @@ For publication and reproducibility, specify the method explicitly:
 
 Method 16 is:
 
-\[
-CW*{16}(t_1,t_2;S,C)
-=
-\left(
-1+
-\ln\!\left(
-\frac{N}{\operatorname{gdf}*{C}(t*1,t_2)}
-\right)
-\right)
-\sqrt{
-\operatorname{idf}*{C}(t*1)
-\operatorname{idf}*{C}(t*2)
-}
-\left(
-1+\ln \operatorname{ctf}*{S}(t_1,t_2)
-\right).
-\]
+$$
+CW*{16}(t_1,t_2;S,C) = \left( 1+ \ln\!\left( \frac{N}{\mathrm{gdf}*{C}(t*1,t_2)} \right) \right) \sqrt{ \mathrm{idf}*{C}(t*1) \mathrm{idf}*{C}(t*2) } \left( 1+\ln \mathrm{ctf}*{S}(t_1,t_2) \right).
+$$
 
 It combines three kinds of evidence:
 
