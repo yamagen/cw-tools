@@ -279,10 +279,6 @@ For a projected pattern `t`, global document frequency is:
 df_C(t) = number of units in C containing t
 ```
 
-$$
-\mathrm{df}_{C}(t) = | \{u \in C : t \in u\} |
-$$
-
 ```math
 \mathrm{df}_{C}(t) = | \{u \in C : t \in u\} |
 ```
@@ -293,11 +289,11 @@ Global inverse document frequency is:
 idf_C(t) = ln(N / df_C(t))
 ```
 
-$$
+```math
 \mathrm{idf}_{C}(t)
 =
 \ln\!\left(\frac{N}{\mathrm{df}_{C}(t)}\right)
-$$
+```
 
 `cw` uses the natural logarithm and floating-point division. No additive
 smoothing is applied.
