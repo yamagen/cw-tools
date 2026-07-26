@@ -8,7 +8,7 @@ script_dir=$(
 )
 
 repo_dir=$(
-    cd -- "$script_dir/.."
+    cd -- "$script_dir/../.."
     pwd
 )
 
