@@ -1,0 +1,41 @@
+cw-tools/examples/bochan-source-information.txt
+
+Aozora Bunko Bibliographic and Source Information
+
+JA:Japanese
+青空文庫　書誌情報・原典情報
+https://www.aozora.gr.jp/cards/000148/files/752_14964.html
+図書カード：No.752
+底本：「ちくま日本文学全集　夏目漱石」筑摩書房
+　　　1992（平成4）年1月20日第1刷発行
+底本の親本：「夏目漱石全集2」ちくま文庫、筑摩書房
+　　　1987（昭和62）年10月27日第1刷発行
+※底本の注によれば、本作品の原稿には、「そのうち学校もいやになった。」の後に、漱石自身による２字あけの指定があるという。このファイルでは、その情報にもとづいて、当該の箇所を２字あけとした。
+※底本は、物を数える際や地名などに用いる「ヶ」（区点番号5-86）を、大振りにつくっています。
+入力：真先芳秋
+校正：柳沢成雄
+1999年9月13日公開
+2011年5月20日修正
+青空文庫作成ファイル：
+このファイルは、インターネットの図書館、青空文庫（http://www.aozora.gr.jp/）で作られました。入力、校正、制作にあたったのは、ボランティアの皆さんです。
+- 表記について: このファイルは W3C 勧告 XHTML1.1 にそった形式で作成されています。
+
+EN:English
+Aozora Bunko Bibliographic and Source Information
+https://www.aozora.gr.jp/cards/000148/files/752_14964.html
+Book card: No.752
+Source text: "Chikuma Nihon Bungaku Zenshu Natsume Soseki" Chikuma Shobo
+First edition published on January 20, 1992
+Parent text of the source text: "Natsume Soseki Zenshu 2" Chikuma Bunko, Chikuma Shobo
+First edition published on October 27, 1987
+* According to the notes in the source text, there is a two-character space specified by Soseki himself after "そのうち学校もいやになった。". In this file, that part is represented with a two-character space based on that information.
+* In the source text, the character "ヶ" (used for counting objects and place names) is written in a larger size.
+Input: Masaki Yoshiaki
+Proofreading: Yanagisawa Shigeo
+Published on September 13, 1999
+Revised on May 20, 2011
+File created by Aozora Bunko:
+This file was created by Aozora Bunko (http://www.aozora.gr.jp/), an internet library. The input, proofreading, and production were done by volunteers.
+
+- Regarding notation: This file was created in accordance with the W3C XHTML 1.1 Recommendation.
+

@@ -722,6 +722,18 @@ head kokin-ume.tsv
 awk -F '\t' '{print $11}' kokin-ume.tsv | rbin -c
 ```
 
+### Japanese text analyzed with MeCab and IPADIC
+
+A complete example using Natsume Soseki's _Botchan_ is provided with its
+shell script and source text:
+
+- [Natsume Soseki: _Botchan_ Example and Shell Script](examples/bochan/cw-bochan.md)
+
+The example converts ordinary MeCab and IPADIC output into the unit-based
+`cw-tools` format, generates token pairs, calculates CW values, removes
+punctuation patterns with a Unix filter, and produces an SVG graph with
+Graphviz.
+
 ## Documentation
 
 The manuals are intended both for operation and for citation-ready method
