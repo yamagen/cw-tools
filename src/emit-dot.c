@@ -130,12 +130,28 @@ static void write_attr_string(FILE *stream, const char *name,
     *first = false;
 }
 
+static const char *z_sign_name(double z)
+{
+    if (z < 0.0)
+        return "negative";
+    if (z > 0.0)
+        return "positive";
+    return "zero";
+}
+
 void emit_dot_write(FILE *stream, const EdgeVec *edges,
                     const NodeVec *nodes, const Config *config)
 {
     EmitNodeWeightRange range = emit_node_weight_range(nodes, config);
+    EmitValueRange z_range = emit_edge_z_magnitude_range(edges);
     const char *kind = config->directed ? "digraph" : "graph";
     const char *connector = config->directed ? " -> " : " -- ";
+    const char *direction_class = config->directed ? "directed" : "undirected";
+    const char *font_source = emit_font_size_by_name(config->node_font_size_by);
+    char graph_classes[96];
+
+    snprintf(graph_classes, sizeof(graph_classes), "font-by-%s %s",
+             font_source, direction_class);
 
     fprintf(stream, "%s ", kind);
     dot_string(stream, config->graph_name);
@@ -143,6 +159,8 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
 
     fputs("  graph [", stream);
     bool first = true;
+    write_attr_string(stream, "id", "graph-1", &first);
+    write_attr_string(stream, "class", graph_classes, &first);
     write_attr_string(stream, "charset", config->charset, &first);
     if (!first) fputs(", ", stream);
     fprintf(stream, "overlap=%s", config->overlap ? "true" : "false");
@@ -180,24 +198,47 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
     for (size_t i = 0; i < nodes->len; i++) {
         const NodeRef *node = &nodes->items[i];
         char *label = emit_make_node_label(node->id, config);
+        char element_id[64];
+        char classes[96];
+
+        snprintf(element_id, sizeof(element_id), "node-%zu", i + 1);
+        snprintf(classes, sizeof(classes), "font-by-%s font-rank-%zu",
+                 font_source, emit_node_font_rank(node, range, config));
+
         fputs("  ", stream);
         dot_string(stream, node->id);
-        fputs(" [label=", stream);
-        dot_string(stream, label);
-        fprintf(stream, ", fontsize=%.17g];\n",
+        fputs(" [", stream);
+        first = true;
+        write_attr_string(stream, "id", element_id, &first);
+        write_attr_string(stream, "class", classes, &first);
+        write_attr_string(stream, "label", label, &first);
+        if (!first)
+            fputs(", ", stream);
+        fprintf(stream, "fontsize=%.17g];\n",
                 emit_node_font_size(node, range, config));
         free(label);
     }
 
     for (size_t i = 0; i < edges->len; i++) {
         const Edge *edge = &edges->items[i];
+        char element_id[64];
+        char classes[96];
+
+        snprintf(element_id, sizeof(element_id), "edge-%zu", i + 1);
+        snprintf(classes, sizeof(classes), "z-rank-%zu z-%s",
+                 emit_edge_z_rank(edge, z_range), z_sign_name(edge->z));
+
         fputs("  ", stream);
         dot_string(stream, edge->source);
         fputs(connector, stream);
         dot_string(stream, edge->target);
         fputs(" [", stream);
         first = true;
+        write_attr_string(stream, "id", element_id, &first);
+        write_attr_string(stream, "class", classes, &first);
         if (config->edge_label != EDGE_LABEL_NONE) {
+            if (!first)
+                fputs(", ", stream);
             fputs("label=\"", stream);
             write_edge_label(stream, edge, config);
             fputc('"', stream);
@@ -205,12 +246,8 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
         }
         if (tooltip_enabled(config)) {
             char *tooltip = edge_tooltip(edge, config);
-            if (!first)
-                fputs(", ", stream);
-            fputs("tooltip=", stream);
-            dot_string(stream, tooltip);
+            write_attr_string(stream, "tooltip", tooltip, &first);
             free(tooltip);
-            first = false;
         }
         fputs("];\n", stream);
     }
