@@ -196,7 +196,7 @@ Generate the SVG with the stylesheet attached:
 ```sh
 ... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
   | neato -Gstylesheet=assets/svg.css -Tsvg -o t.svg
-inkview t.svg
+firefox t.svg
 ```
 
 The generated SVG should contain a processing instruction similar to:
@@ -224,6 +224,40 @@ If the SVG is written to another directory, either copy the stylesheet beside
 that output using a suitable relative path, or pass a stylesheet path that is
 correct from the SVG file's location.
 
+### SVG attributes and CSS
+
+Graphviz continues to write concrete presentation attributes into SVG, for
+example:
+
+```xml
+<path fill="none" stroke="black" stroke-width="0.2" ... />
+```
+
+`emit` does not read `assets/svg.css`, and Graphviz does not replace that
+attribute with the stylesheet value. Instead, Graphviz writes the external CSS
+reference and the viewer applies CSS when the SVG is displayed.
+
+For example, an edge may be grouped as:
+
+```xml
+<g id="edge&#45;2" class="edge z&#45;rank&#45;4 z&#45;positive">
+  <path fill="none" stroke="black" stroke-width="0.2" ... />
+</g>
+```
+
+and the stylesheet may contain:
+
+```css
+.edge.z-rank-4 path {
+    stroke-width: 0.70;
+    opacity: 0.63;
+}
+```
+
+A browser resolves `&#45;` to `-` and uses the semantic class selector. The
+original `stroke-width="0.2"` remains visible in the SVG source even when the
+computed displayed width comes from CSS.
+
 ### Initial stylesheet behavior
 
 The first stylesheet intentionally does not change node font size. Graphviz has
@@ -239,8 +273,33 @@ z-negative  -> dashed edge
 z-zero      -> dotted edge
 ```
 
-This should make stylesheet application visibly testable while preserving the
+This makes stylesheet application visibly testable while preserving the
 existing node geometry.
+
+### Viewer behavior confirmed locally
+
+The external stylesheet was confirmed in Firefox by temporarily changing one
+edge rule to a conspicuous red line with a large width.
+
+Firefox may retain an older local stylesheet in its cache. After changing
+`assets/svg.css`, use a forced reload such as:
+
+```text
+Ctrl+Shift+R
+```
+
+or close and reopen the SVG tab.
+
+In the locally tested environment, `inkview` displayed the SVG's concrete
+presentation attributes but did not reflect the external stylesheet referenced
+by `<?xml-stylesheet ...?>`. Therefore:
+
+```text
+inkview   useful for the ordinary Graphviz SVG and geometry
+Firefox   use for testing the external semantic stylesheet
+```
+
+This is a viewer distinction, not a failure of the class or rank output.
 
 ### Control comparison
 
@@ -255,8 +314,8 @@ The two commands provide a direct comparison:
 ... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
   | neato -Gstylesheet=assets/svg.css -Tsvg -o t-css.svg
 
-inkview t-plain.svg
-inkview t-css.svg
+firefox t-plain.svg
+firefox t-css.svg
 ```
 
 Only Graphviz's stylesheet attachment differs between the two pipelines.
