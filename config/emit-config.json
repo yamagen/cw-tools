@@ -34,6 +34,9 @@
     "--fontname": "Noto Serif CJK JP",
     "label": "ctf",
     "tooltip": ["ctf", "cdf", "cw", "z", "unit_ids"],
+    "url_base": null,
+    "url_parameter": "unit_id",
+    "url_target": "_blank",
     "penwidth": 0.2,
     "length": 1.4
   }
