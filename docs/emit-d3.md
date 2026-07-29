@@ -1,15 +1,17 @@
 # External D3 route
 
-This document records the first separated D3 route. The existing `-T d3`
-output remains available as a self-contained HTML file. The new route separates
-graph-specific data from reusable browser code:
+This document records the separated D3 route. The existing `-T d3` output
+remains available as a self-contained HTML file. The external route separates
+graph-specific data, reusable rendering, and visibility controls:
 
 ```text
 cw rows
   -> emit -T js
   -> emit-data.js
   -> emit-d3.js + D3 v7
-  -> browser SVG
+  -> fixed browser SVG
+  -> emit-slider.js
+  -> visibility changes on the fixed SVG
 ```
 
 ## Files and responsibilities
@@ -17,19 +19,20 @@ cw rows
 ```text
 emit-data.js          generated for one graph by emit -T js
 assets/emit-d3.js     reusable cw-tools renderer
+assets/emit-slider.js reusable Z-threshold visibility controller
 assets/emit-d3.css    reusable appearance rules
 templates/emit-d3.html assembly template
 d3.v7.min.js          external D3 library
 ```
 
-`emit-data.js`, `emit-d3.js`, and `emit-d3.css` are cw-tools files. D3 itself is
-an external library. The template currently loads the pinned D3 7.9.0 browser
-bundle from jsDelivr. It may instead point to a locally downloaded copy named,
-for example, `d3.v7.min.js`.
+`emit-data.js`, `emit-d3.js`, `emit-slider.js`, and `emit-d3.css` are cw-tools
+files. D3 itself is an external library. The template currently loads the pinned
+D3 7.9.0 browser bundle from jsDelivr. It may instead point to a locally
+downloaded copy named, for example, `d3.v7.min.js`.
 
 ## Generate emit-data.js
 
-The first implementation adds `js` as a command-line output format:
+The external route adds `js` as a command-line output format:
 
 ```sh
 ... | ./emit -c config/emit-config.json -T js > templates/emit-data.js
@@ -51,10 +54,9 @@ The object body is JSON-compatible. The assignment allows a local HTML file to
 load the data with an ordinary `<script>` element; no `fetch()` call or local
 web server is required.
 
-In this first separation stage, `js` is a CLI-only format. Use `-T js`,
-`-Tjs`, `--format js`, or `--format=js`. A configuration entry
-`"format": "js"` is not yet accepted by the legacy configuration parser.
-The existing `-T d3` behavior is unchanged.
+`js` is currently a CLI-only format. Use `-T js`, `-Tjs`, `--format js`, or
+`--format=js`. A configuration entry `"format": "js"` is not yet accepted by
+the legacy configuration parser. The existing `-T d3` behavior is unchanged.
 
 ## Data contract
 
@@ -94,8 +96,8 @@ classes                   edge, z-rank-*, z-*, optional has-url
 url, url_target           optional link destination
 ```
 
-The rank and class values are produced by `emit`. `assets/emit-d3.js` does not
-calculate a second rank system.
+The rank and class values are produced by `emit`. Neither `assets/emit-d3.js`
+nor `assets/emit-slider.js` calculates a second rank system.
 
 ## Render the graph
 
@@ -111,24 +113,68 @@ The template loads files in this order:
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="emit-data.js"></script>
 <script src="../assets/emit-d3.js"></script>
+<script src="../assets/emit-slider.js"></script>
 ```
 
-The order expresses the dependencies directly:
+The dependency chain is:
 
 ```text
-D3 library
-  -> emit-d3.js
-emit-data.js
-  -> emit-d3.js
+D3 library + emit-data.js
+          -> emit-d3.js
+          -> fixed SVG
+emit-data.js + fixed SVG
+          -> emit-slider.js
 ```
 
 `emit-d3.js` creates the SVG elements, copies `element_id` and `classes` from
 the data, runs the initial force layout, supports zoom and drag, and exposes the
 result as `globalThis.emitGraph`.
 
-When the initial force simulation ends, node positions are pinned. Later slider
-work can therefore hide and show graph layers without recalculating the map.
-The renderer also dispatches an `emit-layout-ready` browser event.
+When the initial force simulation ends, node positions are pinned. Slider
+changes therefore do not recalculate the map. The renderer also dispatches an
+`emit-layout-ready` browser event.
+
+## Z slider
+
+`assets/emit-slider.js` reads the existing `z` values and builds one ordinary
+HTML range control. Its first implementation uses this rule:
+
+```text
+visible edge: z >= threshold
+visible node: connected to at least one visible edge
+```
+
+The slider performs presentation only:
+
+```text
+no Z calculation
+no rank calculation
+no distribution estimation by cw or emit
+no force-layout restart
+no mutation of emit-data.js
+```
+
+For each input event it toggles the `is-hidden` class on existing edge and node
+SVG groups. The distribution panel is a small histogram derived from the
+already supplied link values. Its selected fill covers the retained right-hand
+region from the current threshold to the maximum Z value.
+
+The control reports the current threshold and the retained edge/node counts. It
+also dispatches:
+
+```js
+new CustomEvent("emit-z-change", { detail })
+```
+
+and exposes:
+
+```js
+globalThis.emitSlider.setThreshold(value)
+globalThis.emitSlider.reset()
+```
+
+`emit-slider.js` does not call D3. It depends on the SVG already created by
+`emit-d3.js` and uses browser DOM and SVG APIs only.
 
 ## CSS and links
 
@@ -139,6 +185,7 @@ font-rank-0 ... font-rank-9
 z-rank-0 ... z-rank-9
 z-negative | z-zero | z-positive
 has-url
+is-hidden
 ```
 
 An edge URL generated from `unit_ids` wraps the visible edge line, its wider
@@ -172,6 +219,14 @@ When Node.js is installed, syntax-check the generated and reusable JavaScript:
 ```sh
 node --check templates/emit-data.js
 node --check assets/emit-d3.js
+node --check assets/emit-slider.js
+```
+
+Run the supplied static checks:
+
+```sh
+sh tests/run-emit-js.sh
+sh tests/run-emit-slider.sh
 ```
 
 Then open the graph:
@@ -180,9 +235,6 @@ Then open the graph:
 firefox templates/emit-d3.html
 ```
 
-## Next stage
-
-`emit-slider.js` will be added after this data and renderer contract is
-confirmed with real cw output. It will use ordinary browser controls and alter
-visibility on the fixed graph. It will not define another layout or rank
-calculation.
+The default slider position is the minimum Z value, so all edges are initially
+visible. Move it to the right to retain progressively higher-Z edges while the
+node positions remain fixed.
