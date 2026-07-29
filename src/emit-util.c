@@ -134,6 +134,22 @@ const char *emit_font_size_by_name(FontSizeBy value)
     return "fq";
 }
 
+size_t emit_rank(double value, EmitValueRange range)
+{
+    if (range.max == range.min)
+        return EMIT_RANK_COUNT / 2;
+    if (value <= range.min)
+        return 0;
+    if (value >= range.max)
+        return EMIT_RANK_COUNT - 1;
+
+    double normalized = (value - range.min) / (range.max - range.min);
+    size_t rank = (size_t)(normalized * EMIT_RANK_COUNT);
+    if (rank >= EMIT_RANK_COUNT)
+        rank = EMIT_RANK_COUNT - 1;
+    return rank;
+}
+
 static double node_weight(const NodeRef *node, const Config *config)
 {
     switch (config->node_font_size_by) {
@@ -195,4 +211,39 @@ double emit_node_font_size(const NodeRef *node,
     return config->node_min_font_size +
            normalized * (config->node_max_font_size -
                          config->node_min_font_size);
+}
+
+size_t emit_node_font_rank(const NodeRef *node,
+                           EmitNodeWeightRange range,
+                           const Config *config)
+{
+    return emit_rank(node_weight(node, config), range);
+}
+
+static double magnitude(double value)
+{
+    return value < 0.0 ? -value : value;
+}
+
+EmitValueRange emit_edge_z_magnitude_range(const EdgeVec *edges)
+{
+    EmitValueRange range = {0.0, 0.0};
+    if (edges->len == 0)
+        return range;
+
+    range.min = magnitude(edges->items[0].z);
+    range.max = range.min;
+    for (size_t i = 1; i < edges->len; i++) {
+        double value = magnitude(edges->items[i].z);
+        if (value < range.min)
+            range.min = value;
+        if (value > range.max)
+            range.max = value;
+    }
+    return range;
+}
+
+size_t emit_edge_z_rank(const Edge *edge, EmitValueRange range)
+{
+    return emit_rank(magnitude(edge->z), range);
 }
