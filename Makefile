@@ -12,8 +12,8 @@ pair: src/pair.o
 cw: src/cw.o src/common.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-EMIT_OBJS = src/emit.o src/emit-util.o src/emit-json.o src/emit-dot.o \
-            src/emit-tables.o src/emit-d3.o
+EMIT_OBJS = src/emit.o src/emit-util.o src/emit-url.o src/emit-json.o \
+            src/emit-dot.o src/emit-tables.o src/emit-d3.o
 
 emit: $(EMIT_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
