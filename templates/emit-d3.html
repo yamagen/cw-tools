@@ -7,11 +7,26 @@
   <link rel="stylesheet" href="../assets/emit-d3.css">
 </head>
 <body>
+  <section id="emit-controls" aria-label="Z threshold controls">
+    <div id="emit-control-summary">
+      <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+      <span id="emit-z-count" aria-live="polite"></span>
+    </div>
+    <svg id="emit-z-distribution"></svg>
+    <div id="emit-slider-row">
+      <span id="emit-z-min"></span>
+      <input id="emit-z-slider" type="range" aria-label="minimum Z value">
+      <span id="emit-z-max"></span>
+      <button id="emit-z-reset" type="button">Reset</button>
+    </div>
+  </section>
+
   <svg id="emit-graph" aria-label="interactive network graph"></svg>
   <div id="emit-tip"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="emit-data.js"></script>
   <script src="../assets/emit-d3.js"></script>
+  <script src="../assets/emit-slider.js"></script>
 </body>
 </html>
