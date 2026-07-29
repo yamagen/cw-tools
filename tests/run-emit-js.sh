@@ -2,7 +2,9 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-tmp=$(mktemp)
+tmp_base=$(mktemp)
+tmp="$tmp_base.js"
+rm -f "$tmp_base"
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
 
 make -C "$root" emit
