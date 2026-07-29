@@ -1,17 +1,17 @@
 # emit SVG route
 
 This document records the Graphviz-to-SVG implementation and verification
-steps.  It is updated one confirmed stage at a time.
+steps. It is updated one confirmed stage at a time.
 
 For the responsibility boundaries, see
-[emit-architecture.md](./emit-architecture.md).  For the shared attribute
+[emit-architecture.md](./emit-architecture.md). For the shared attribute
 contract, see [emit-semantic-attributes.md](./emit-semantic-attributes.md).
 
 ## Stage 1: semantic IDs and classes
 
 Implemented in `src/emit-dot.c` and shared helpers in `src/emit-util.c`.
 
-The first stage does not yet attach a stylesheet.  Its purpose is to verify that
+The first stage does not attach a stylesheet. Its purpose is to verify that
 semantic identifiers and classes survive this route:
 
 ```text
@@ -72,7 +72,7 @@ class="font-by-fq font-rank-7"
 Graphviz automatically adds the base class `node` to the SVG group.
 
 The existing concrete Graphviz `fontsize` attribute remains unchanged for
-layout compatibility.  `font-rank-N` is additional semantic information; it
+layout compatibility. `font-rank-N` is additional semantic information; it
 does not yet control the layout.
 
 ### Edges
@@ -102,8 +102,8 @@ class="z-rank-6 z-positive"
 Graphviz automatically adds the base class `edge` to the SVG group.
 
 `z-rank-N` is derived from `abs(z)` among the edges retained in the displayed
-graph.  The sign is recorded separately so that a later stylesheet can assign
-line width from magnitude and color or dash pattern from sign.
+graph. The sign is recorded separately so that a stylesheet can assign line
+width from magnitude and color or dash pattern from sign.
 
 ## Rank calculation
 
@@ -120,13 +120,13 @@ normalized = (x - min) / (max - min)
 rank       = floor(normalized * 10)
 ```
 
-The maximum is clamped to 9.  When every displayed value is equal, rank 5 is
+The maximum is clamped to 9. When every displayed value is equal, rank 5 is
 used.
 
 Node font rank uses the configured source (`fq`, `idf`, or displayed degree).
 Edge Z rank uses `abs(z)`.
 
-## Local verification
+## Stage 1 local verification
 
 Fetch and enter the implementation branch:
 
@@ -149,7 +149,7 @@ make clean
 make emit
 ```
 
-Use the normal cw-tools pipeline and write SVG through Graphviz.  For example:
+Use the normal cw-tools pipeline and write SVG through Graphviz. For example:
 
 ```sh
 ... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
@@ -157,7 +157,8 @@ Use the normal cw-tools pipeline and write SVG through Graphviz.  For example:
 inkview t.svg
 ```
 
-The existing visual result should remain unchanged at this stage.
+The existing visual result should remain unchanged at this stage. This was
+confirmed locally after the semantic attributes were added.
 
 Inspect the generated groups:
 
@@ -178,13 +179,96 @@ Graphviz may serialize a hyphen as the XML character reference `&#45;`.
 An XML or browser parser resolves it back to `-`, so CSS selectors such as
 `.font-rank-7` still address the class normally.
 
+## Stage 2: external SVG stylesheet
+
+The initial stylesheet is:
+
+```text
+assets/svg.css
+```
+
+This stage tests the stylesheet independently before adding another `emit`
+configuration field. Graphviz accepts the graph attribute `stylesheet`; its
+command-line equivalent is `-Gstylesheet=PATH`.
+
+Generate the SVG with the stylesheet attached:
+
+```sh
+... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
+  | neato -Gstylesheet=assets/svg.css -Tsvg -o t.svg
+inkview t.svg
+```
+
+The generated SVG should contain a processing instruction similar to:
+
+```xml
+<?xml-stylesheet href="assets/svg.css" type="text/css"?>
+```
+
+Confirm it with:
+
+```sh
+head -n 5 t.svg
+grep 'xml-stylesheet' t.svg
+```
+
+The stylesheet path is interpreted relative to the generated SVG file when a
+viewer loads it. Therefore the command above assumes this arrangement:
+
+```text
+t.svg
+assets/svg.css
+```
+
+If the SVG is written to another directory, either copy the stylesheet beside
+that output using a suitable relative path, or pass a stylesheet path that is
+correct from the SVG file's location.
+
+### Initial stylesheet behavior
+
+The first stylesheet intentionally does not change node font size. Graphviz has
+already calculated its geometry using the DOT `fontsize`; changing the font
+size afterward can make labels exceed their calculated space.
+
+Instead, the stylesheet uses:
+
+```text
+font-rank-N -> text opacity and font weight
+z-rank-N    -> edge width and opacity
+z-negative  -> dashed edge
+z-zero      -> dotted edge
+```
+
+This should make stylesheet application visibly testable while preserving the
+existing node geometry.
+
+### Control comparison
+
+The two commands provide a direct comparison:
+
+```sh
+# Existing appearance
+... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
+  | neato -Tsvg -o t-plain.svg
+
+# Semantic stylesheet
+... | ./emit -c config/emit-config.json -Tdot -Z 1.6 \
+  | neato -Gstylesheet=assets/svg.css -Tsvg -o t-css.svg
+
+inkview t-plain.svg
+inkview t-css.svg
+```
+
+Only Graphviz's stylesheet attachment differs between the two pipelines.
+
 ## Next stage
 
-After the generated SVG has been confirmed locally:
+After Stage 2 is confirmed locally:
 
-1. add `assets/svg.css`;
-2. decide how the stylesheet path enters DOT (`stylesheet` graph attribute);
-3. preserve the current Graphviz layout while testing class-based appearance;
-4. document the copy or installation path for `svg.css`.
+1. decide whether the stylesheet path belongs in `dot.stylesheet`, a command-line
+   option, or remains a Graphviz-side concern;
+2. adjust the initial CSS rank mapping from the observed graph if necessary;
+3. document copying or installing `svg.css` outside the repository;
+4. consider font-size control separately because it affects Graphviz layout.
 
-No JavaScript is required for this stage.
+No JavaScript is required for the SVG route at this stage.
