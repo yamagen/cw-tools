@@ -1,0 +1,43 @@
+/* cw-tools Graphviz SVG stylesheet
+ *
+ * This first stylesheet deliberately leaves Graphviz font sizes unchanged.
+ * Graphviz calculated the layout using the DOT fontsize values; changing those
+ * sizes after layout can cause labels and nodes to overlap.
+ *
+ * The stylesheet demonstrates that semantic classes emitted by emit survive
+ * DOT -> Graphviz -> SVG and can control appearance independently of C code.
+ */
+
+/* Keep line ends and joins calm when higher Z ranks produce wider edges. */
+.edge path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Node font rank: emphasis only, not font size, in this first stage. */
+.node.font-rank-0 text { opacity: 0.55; font-weight: 400; }
+.node.font-rank-1 text { opacity: 0.60; font-weight: 400; }
+.node.font-rank-2 text { opacity: 0.65; font-weight: 400; }
+.node.font-rank-3 text { opacity: 0.70; font-weight: 400; }
+.node.font-rank-4 text { opacity: 0.75; font-weight: 400; }
+.node.font-rank-5 text { opacity: 0.80; font-weight: 500; }
+.node.font-rank-6 text { opacity: 0.85; font-weight: 500; }
+.node.font-rank-7 text { opacity: 0.90; font-weight: 600; }
+.node.font-rank-8 text { opacity: 0.95; font-weight: 700; }
+.node.font-rank-9 text { opacity: 1.00; font-weight: 700; }
+
+/* Edge Z rank: magnitude controls width and opacity. */
+.edge.z-rank-0 path { stroke-width: 0.20; opacity: 0.35; }
+.edge.z-rank-1 path { stroke-width: 0.30; opacity: 0.42; }
+.edge.z-rank-2 path { stroke-width: 0.40; opacity: 0.49; }
+.edge.z-rank-3 path { stroke-width: 0.55; opacity: 0.56; }
+.edge.z-rank-4 path { stroke-width: 0.70; opacity: 0.63; }
+.edge.z-rank-5 path { stroke-width: 0.90; opacity: 0.70; }
+.edge.z-rank-6 path { stroke-width: 1.15; opacity: 0.78; }
+.edge.z-rank-7 path { stroke-width: 1.45; opacity: 0.86; }
+.edge.z-rank-8 path { stroke-width: 1.80; opacity: 0.93; }
+.edge.z-rank-9 path { stroke-width: 2.20; opacity: 1.00; }
+
+/* Sign and magnitude remain independent semantic dimensions. */
+.edge.z-negative path { stroke-dasharray: 5 3; }
+.edge.z-zero path     { stroke-dasharray: 1 3; }
