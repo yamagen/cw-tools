@@ -80,21 +80,21 @@ replace the complete token as the data identity.
 
 ## Rank scale
 
-The first implementation uses nine ordered ranks:
+The first implementation uses ten ordered ranks represented by one digit:
 
 ```text
-1 2 3 4 5 6 7 8 9
+0 1 2 3 4 5 6 7 8 9
 ```
 
-Rank 1 is the lowest displayed value, rank 9 is the highest, and rank 5 is the
-middle rank.  Nine ranks provide a true midpoint and enough levels for CSS
-without exposing a separate class for every numeric value.
+Rank 0 is the lowest displayed value and rank 9 is the highest.  The ten ranks
+fit in one decimal digit and provide enough levels for CSS without exposing a
+separate class for every numeric value.
 
 For a displayed value `x` with displayed minimum `min` and maximum `max`:
 
 ```text
 normalized = (x - min) / (max - min)
-rank       = 1 + floor(normalized * 9)
+rank       = floor(normalized * 10)
 ```
 
 The maximum is clamped to rank 9.  When all displayed values are equal, every
@@ -120,7 +120,7 @@ Each emitted node has:
 | `fq` | selected token frequency, or unavailable for legacy input |
 | `degree` | degree in the displayed graph |
 | `font_size_by` | source selected by configuration: `fq`, `idf`, or `degree` |
-| `font_rank` | rank 1 through 9 derived from that selected source |
+| `font_rank` | rank 0 through 9 derived from that selected source |
 | `classes` | semantic classes listed below |
 
 Base node classes are:
@@ -128,7 +128,7 @@ Base node classes are:
 ```text
 node
 font-by-fq | font-by-idf | font-by-degree
-font-rank-1 ... font-rank-9
+font-rank-0 ... font-rank-9
 ```
 
 Example:
@@ -170,7 +170,7 @@ Each ordinary edge has:
 | `cdf` | selected-unit pair frequency |
 | `cw` | CW value |
 | `z` | Z value |
-| `z_rank` | rank 1 through 9 derived from `abs(z)` in the displayed graph |
+| `z_rank` | rank 0 through 9 derived from `abs(z)` in the displayed graph |
 | `unit_ids` | trailing unit identifiers |
 | `classes` | semantic classes listed below |
 
@@ -178,7 +178,7 @@ Base edge classes are:
 
 ```text
 edge
-z-rank-1 ... z-rank-9
+z-rank-0 ... z-rank-9
 z-negative | z-zero | z-positive
 ```
 
@@ -209,7 +209,7 @@ The graph output should expose:
 | --- | --- |
 | `directed` | directed or undirected graph |
 | `font_size_by` | configured node ranking source |
-| `rank_count` | `9` for the first semantic-rank implementation |
+| `rank_count` | `10` for the first semantic-rank implementation |
 | `classes` | graph-level semantic classes |
 
 Initial graph-level classes are:
