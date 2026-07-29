@@ -1,0 +1,104 @@
+/* cw-tools external D3 renderer stylesheet */
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+}
+
+#emit-graph,
+#graph,
+svg.graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+}
+
+.edge .edge-line {
+    stroke: #777;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.edge .edge-hit {
+    stroke: transparent;
+    stroke-width: 12;
+    pointer-events: stroke;
+}
+
+.edge .edge-label {
+    font-size: 12px;
+    dominant-baseline: middle;
+}
+
+.node circle {
+    fill: #fff;
+    stroke: #222;
+}
+
+.node text {
+    pointer-events: none;
+}
+
+#emit-arrow path {
+    fill: #777;
+}
+
+#emit-tip,
+#tip {
+    position: fixed;
+    display: none;
+    max-width: 34rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #aaa;
+    border-radius: 0.35rem;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    pointer-events: none;
+}
+
+.node.font-rank-0 text { opacity: 0.55; font-weight: 400; }
+.node.font-rank-1 text { opacity: 0.60; font-weight: 400; }
+.node.font-rank-2 text { opacity: 0.65; font-weight: 400; }
+.node.font-rank-3 text { opacity: 0.70; font-weight: 400; }
+.node.font-rank-4 text { opacity: 0.75; font-weight: 400; }
+.node.font-rank-5 text { opacity: 0.80; font-weight: 500; }
+.node.font-rank-6 text { opacity: 0.85; font-weight: 500; }
+.node.font-rank-7 text { opacity: 0.90; font-weight: 600; }
+.node.font-rank-8 text { opacity: 0.95; font-weight: 700; }
+.node.font-rank-9 text { opacity: 1.00; font-weight: 700; }
+
+.node.font-rank-0 circle { stroke-width: 0.20; }
+.node.font-rank-1 circle { stroke-width: 0.30; }
+.node.font-rank-2 circle { stroke-width: 0.40; }
+.node.font-rank-3 circle { stroke-width: 0.50; }
+.node.font-rank-4 circle { stroke-width: 0.70; }
+.node.font-rank-5 circle { stroke-width: 0.90; }
+.node.font-rank-6 circle { stroke-width: 1.10; }
+.node.font-rank-7 circle { stroke-width: 1.40; }
+.node.font-rank-8 circle { stroke-width: 1.80; }
+.node.font-rank-9 circle { stroke-width: 2.20; }
+
+.edge.z-rank-0 .edge-line { stroke-width: 0.20; opacity: 0.35; }
+.edge.z-rank-1 .edge-line { stroke-width: 0.30; opacity: 0.42; }
+.edge.z-rank-2 .edge-line { stroke-width: 0.40; opacity: 0.49; }
+.edge.z-rank-3 .edge-line { stroke-width: 0.55; opacity: 0.56; }
+.edge.z-rank-4 .edge-line { stroke-width: 0.70; opacity: 0.63; }
+.edge.z-rank-5 .edge-line { stroke-width: 0.90; opacity: 0.70; }
+.edge.z-rank-6 .edge-line { stroke-width: 1.15; opacity: 0.78; }
+.edge.z-rank-7 .edge-line { stroke-width: 1.45; opacity: 0.86; }
+.edge.z-rank-8 .edge-line { stroke-width: 1.80; opacity: 0.93; }
+.edge.z-rank-9 .edge-line { stroke-width: 2.20; opacity: 1.00; }
+
+.edge.z-negative .edge-line { stroke-dasharray: 5 3; }
+.edge.z-zero .edge-line { stroke-dasharray: 1 3; }
+
+.has-url { cursor: pointer; }
+.is-hidden { display: none; }
