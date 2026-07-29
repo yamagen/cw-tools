@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "emit-dot.h"
+#include "emit-url.h"
 #include "emit-util.h"
 
 static void dot_string(FILE *stream, const char *text)
@@ -144,6 +145,7 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
 {
     EmitNodeWeightRange range = emit_node_weight_range(nodes, config);
     EmitValueRange z_range = emit_edge_z_magnitude_range(edges);
+    EmitUrlConfig url_config = emit_url_config_load(config->config_path);
     const char *kind = config->directed ? "digraph" : "graph";
     const char *connector = config->directed ? " -> " : " -- ";
     const char *direction_class = config->directed ? "directed" : "undirected";
@@ -222,11 +224,13 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
     for (size_t i = 0; i < edges->len; i++) {
         const Edge *edge = &edges->items[i];
         char element_id[64];
-        char classes[96];
+        char classes[112];
+        char *url = emit_edge_url(edge, &url_config);
 
         snprintf(element_id, sizeof(element_id), "edge-%zu", i + 1);
-        snprintf(classes, sizeof(classes), "z-rank-%zu z-%s",
-                 emit_edge_z_rank(edge, z_range), z_sign_name(edge->z));
+        snprintf(classes, sizeof(classes), "z-rank-%zu z-%s%s",
+                 emit_edge_z_rank(edge, z_range), z_sign_name(edge->z),
+                 url == NULL ? "" : " has-url");
 
         fputs("  ", stream);
         dot_string(stream, edge->source);
@@ -236,6 +240,10 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
         first = true;
         write_attr_string(stream, "id", element_id, &first);
         write_attr_string(stream, "class", classes, &first);
+        write_attr_string(stream, "URL", url, &first);
+        if (url != NULL && url_config.target != NULL &&
+            url_config.target[0] != '\0')
+            write_attr_string(stream, "target", url_config.target, &first);
         if (config->edge_label != EDGE_LABEL_NONE) {
             if (!first)
                 fputs(", ", stream);
@@ -250,6 +258,8 @@ void emit_dot_write(FILE *stream, const EdgeVec *edges,
             free(tooltip);
         }
         fputs("];\n", stream);
+        free(url);
     }
     fputs("}\n", stream);
+    emit_url_config_free(&url_config);
 }
