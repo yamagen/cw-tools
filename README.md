@@ -53,8 +53,8 @@ procedure in a paper.
 | Program |      Version | Status      | Responsibility                                                      |
 | ------- | -----------: | ----------- | ------------------------------------------------------------------- |
 | `pair`  |        0.2.0 | implemented | generate complete-token pairs and preserve per-unit token frequency |
-| `cw`    |        0.9.0 | implemented | project patterns and calculate global/local statistics, CW, and Z   |
-| `emit`  |        0.7.0 | implemented | serialize graphs and publication tables safely                      |
+| `cw`    |        0.9.1 | implemented | project patterns and calculate global/local statistics, CW, and Z   |
+| `emit`  |        0.8.0 | implemented | serialize graphs and publication tables safely                      |
 | `cm`    | design stage | planned     | model directed adjacent transitions including `<BOS>` and `<EOS>`   |
 
 The version of every program used in an analysis should be recorded. Method
