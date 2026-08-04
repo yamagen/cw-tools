@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define PROG_NAME "cw"
-#define PROG_VERSION "0.9.0"
+#define PROG_VERSION "0.9.1"
 
 typedef enum {
     CW_METHOD_BASIC = 1,
@@ -30,10 +30,31 @@ typedef struct {
     size_t cap;
 } StringSetBuilder;
 
+typedef struct {
+    char *pattern;
+    double idf;
+} IdfEntry;
+
+typedef struct {
+    IdfEntry *items;
+    size_t len;
+    size_t cap;
+} IdfTable;
+
 static void die_errno(const char *path)
 {
     fprintf(stderr, "%s: %s: %s\n", PROG_NAME, path, strerror(errno));
     exit(EXIT_FAILURE);
+}
+
+static char *xstrdup(const char *text)
+{
+    char *copy = strdup(text);
+    if (copy == NULL) {
+        fprintf(stderr, "%s: out of memory\n", PROG_NAME);
+        exit(EXIT_FAILURE);
+    }
+    return copy;
 }
 
 static void *xrealloc(void *ptr, size_t size)
@@ -156,6 +177,150 @@ static unsigned parse_field_selection(const char *text, const char *option_name)
     }
 
     return mask;
+}
+
+static int compare_idf_entry(const void *left, const void *right)
+{
+    const IdfEntry *a = left;
+    const IdfEntry *b = right;
+    return strcmp(a->pattern, b->pattern);
+}
+
+static void idf_table_free(IdfTable *table)
+{
+    for (size_t i = 0; i < table->len; i++)
+        free(table->items[i].pattern);
+    free(table->items);
+    memset(table, 0, sizeof(*table));
+}
+
+static void invalid_idf(const char *path, size_t line_number,
+                        const char *detail)
+{
+    if (line_number > 0)
+        fprintf(stderr, "%s: %s:%zu: %s\n", PROG_NAME, path,
+                line_number, detail);
+    else
+        fprintf(stderr, "%s: %s: %s\n", PROG_NAME, path, detail);
+    fprintf(stderr,
+            "%s: IDF file is invalid; regenerate it with cw --idf-out\n",
+            PROG_NAME);
+    exit(EXIT_FAILURE);
+}
+
+static void idf_table_append(IdfTable *table, const char *pattern, double idf)
+{
+    if (table->len == table->cap) {
+        size_t new_cap = table->cap == 0 ? 256 : table->cap * 2;
+        table->items = xrealloc(table->items,
+                                new_cap * sizeof(*table->items));
+        table->cap = new_cap;
+    }
+    table->items[table->len].pattern = xstrdup(pattern);
+    table->items[table->len].idf = idf;
+    table->len++;
+}
+
+static IdfTable read_idf_file(const char *path)
+{
+    FILE *stream = fopen(path, "r");
+    if (stream == NULL)
+        die_errno(path);
+
+    IdfTable table = {0};
+    char *line = NULL;
+    size_t capacity = 0;
+    size_t line_number = 0;
+
+    while (getline(&line, &capacity, stream) != -1) {
+        line_number++;
+        char *saveptr = NULL;
+        char *pattern = strtok_r(line, " \t\r\n", &saveptr);
+        char *value_text = strtok_r(NULL, " \t\r\n", &saveptr);
+        char *extra = strtok_r(NULL, " \t\r\n", &saveptr);
+
+        if (pattern == NULL || value_text == NULL || extra != NULL)
+            invalid_idf(path, line_number,
+                        "expected exactly: pattern idf");
+
+        char *end = NULL;
+        errno = 0;
+        double value = strtod(value_text, &end);
+        if (errno != 0 || end == value_text || *end != '\0' ||
+            !isfinite(value) || value < 0.0)
+            invalid_idf(path, line_number, "invalid IDF value");
+
+        idf_table_append(&table, pattern, value);
+    }
+
+    if (ferror(stream)) {
+        free(line);
+        idf_table_free(&table);
+        fclose(stream);
+        die_errno(path);
+    }
+    free(line);
+    if (fclose(stream) != 0) {
+        idf_table_free(&table);
+        die_errno(path);
+    }
+    if (table.len == 0)
+        invalid_idf(path, 0, "empty IDF file");
+
+    qsort(table.items, table.len, sizeof(*table.items), compare_idf_entry);
+    for (size_t i = 1; i < table.len; i++) {
+        if (strcmp(table.items[i - 1].pattern, table.items[i].pattern) == 0)
+            invalid_idf(path, 0, "duplicate pattern");
+    }
+    return table;
+}
+
+static const IdfEntry *find_idf(const IdfTable *table, const char *pattern)
+{
+    IdfEntry key = {.pattern = (char *)pattern, .idf = 0.0};
+    return bsearch(&key, table->items, table->len,
+                   sizeof(*table->items), compare_idf_entry);
+}
+
+static void apply_external_idf(CwtCorpusStats *stats, const IdfTable *table,
+                               const char *path)
+{
+    for (size_t i = 0; i < stats->token_count; i++) {
+        CwtTokenStat *token = &stats->tokens[i];
+        const IdfEntry *entry = find_idf(table, token->pattern);
+        if (entry == NULL) {
+            fprintf(stderr, "%s: %s: missing IDF for pattern '%s'\n",
+                    PROG_NAME, path, token->pattern);
+            fprintf(stderr,
+                    "%s: regenerate the IDF file with matching "
+                    "--pattern-fields using cw --idf-out\n", PROG_NAME);
+            exit(EXIT_FAILURE);
+        }
+        token->idf = entry->idf;
+    }
+
+    for (size_t i = 0; i < stats->pair_count; i++) {
+        CwtPairStat *pair = &stats->pairs[i];
+        const IdfEntry *left = find_idf(table, pair->pattern1);
+        const IdfEntry *right = find_idf(table, pair->pattern2);
+        if (left == NULL || right == NULL) {
+            fprintf(stderr, "%s: %s: missing IDF for pair pattern\n",
+                    PROG_NAME, path);
+            fprintf(stderr,
+                    "%s: regenerate the IDF file with cw --idf-out\n",
+                    PROG_NAME);
+            exit(EXIT_FAILURE);
+        }
+        pair->idf1 = left->idf;
+        pair->idf2 = right->idf;
+    }
+}
+
+static void print_idf(const CwtCorpusStats *stats)
+{
+    for (size_t i = 0; i < stats->token_count; i++)
+        printf("%s\t%.17g\n", stats->tokens[i].pattern,
+               stats->tokens[i].idf);
 }
 
 static size_t count_selected_cdf(const CwtStringList *unit_ids,
@@ -496,6 +661,8 @@ static void print_help(FILE *stream)
             "                   (examples: 2,3  2f.3f  2)\n"
             "  -k, --key REGEX  restrict pair occurrences to units containing a\n"
             "                   pattern matching a POSIX extended regex\n"
+            "      --idf-out   write pattern and IDF to standard output, then exit\n"
+            "      --idf-in FILE use IDF values from FILE\n"
             "  -M, --method N   CW method: 1, 7, 12, or 16 (default: 7)\n"
             "  -s, --surface    compatibility alias for -p 1,2,3,4\n"
             "  -h, --help       display this help and exit\n"
@@ -505,10 +672,13 @@ static void print_help(FILE *stream)
 
 int main(int argc, char **argv)
 {
+    enum { OPT_IDF_OUT = 256, OPT_IDF_IN };
     static const struct option long_options[] = {
         {"pattern-fields", required_argument, NULL, 'p'},
         {"key", required_argument, NULL, 'k'},
         {"method", required_argument, NULL, 'M'},
+        {"idf-out", no_argument, NULL, OPT_IDF_OUT},
+        {"idf-in", required_argument, NULL, OPT_IDF_IN},
         {"surface", no_argument, NULL, 's'},
         {"help", no_argument, NULL, 'h'},
         {"version", no_argument, NULL, 'v'},
@@ -516,6 +686,8 @@ int main(int argc, char **argv)
     };
 
     const char *key = NULL;
+    const char *idf_in_path = NULL;
+    int idf_out = 0;
     CwMethod method = DEFAULT_CW_METHOD;
     unsigned pattern_fields =
         CWT_TOKEN_FIELD_BIT(2) | CWT_TOKEN_FIELD_BIT(3) |
@@ -551,6 +723,12 @@ int main(int argc, char **argv)
             method = (CwMethod)value;
             break;
         }
+        case OPT_IDF_OUT:
+            idf_out = 1;
+            break;
+        case OPT_IDF_IN:
+            idf_in_path = optarg;
+            break;
         case 's':
             pattern_fields = CWT_TOKEN_FIELD_ALL;
             break;
@@ -566,12 +744,25 @@ int main(int argc, char **argv)
         }
     }
 
+    if (idf_out && idf_in_path != NULL) {
+        fprintf(stderr, "%s: --idf-out and --idf-in cannot be used together\n",
+                PROG_NAME);
+        return EXIT_FAILURE;
+    }
+
+    if (idf_out && key != NULL) {
+        fprintf(stderr, "%s: --idf-out cannot be combined with -k/--key\n",
+                PROG_NAME);
+        return EXIT_FAILURE;
+    }
+
     if (argc - optind > 1) {
         fprintf(stderr, "%s: at most one input file may be specified\n", PROG_NAME);
         return EXIT_FAILURE;
     }
 
-    if ((method == CW_METHOD_WAKA_GRAPH ||
+    if (!idf_out &&
+        (method == CW_METHOD_WAKA_GRAPH ||
          method == CW_METHOD_RARE_PATTERN) && key == NULL) {
         fprintf(stderr,
                 "%s: method %d requires -k/--key because key_fq is part "
@@ -623,6 +814,21 @@ int main(int argc, char **argv)
     cwt_stats_read_with_options(stream, &stats, PROG_NAME,
                                 &read_options);
 
+    IdfTable idf_table = {0};
+    if (idf_in_path != NULL) {
+        idf_table = read_idf_file(idf_in_path);
+        apply_external_idf(&stats, &idf_table, idf_in_path);
+    }
+
+    if (idf_out) {
+        print_idf(&stats);
+        idf_table_free(&idf_table);
+        cwt_stats_free(&stats);
+        if (stream != stdin && fclose(stream) != 0)
+            die_errno(source);
+        return EXIT_SUCCESS;
+    }
+
     if (stream != stdin && fclose(stream) != 0) {
         cwt_stats_free(&stats);
         die_errno(source);
@@ -670,6 +876,7 @@ int main(int argc, char **argv)
 
 cleanup:
 
+    idf_table_free(&idf_table);
     free(key_units.items);
     cwt_stats_free(&stats);
     if (key_regex_compiled)
