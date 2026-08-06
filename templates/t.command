@@ -1,0 +1,1 @@
+grep "^1" tests/data/hachidaishu.txt | grep -v 記号 |sed -e 's/むめ/うめ/g' |./pair |./cw -p 3,4 -M 12 -k "うめ" --idf-in tests/data/hachidaishu.idf  | ./emit -T js -c config/emit-config.json > templates/emit-data.js

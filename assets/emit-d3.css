@@ -2,232 +2,340 @@
 
 html,
 body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    font-family: system-ui, sans-serif;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
 }
 
 body {
-    position: relative;
+  position: relative;
 }
 
 #emit-graph,
 #graph,
 svg.graph {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background: #fff;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #fff;
 }
 
 #emit-controls {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 10;
-    box-sizing: border-box;
-    width: min(31rem, calc(100vw - 1.5rem));
-    padding: 0.75rem 0.85rem 0.8rem;
-    border: 1px solid rgba(0, 0, 0, 0.18);
-    border-radius: 0.55rem;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
-    backdrop-filter: blur(3px);
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(31rem, calc(100vw - 1.5rem));
+  padding: 0.75rem 0.85rem 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(3px);
 }
 
 #emit-control-summary {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.15rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.15rem;
 }
 
 #emit-z-value {
-    font-size: 1.05rem;
-    font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 #emit-z-count {
-    font-size: 0.78rem;
-    color: #555;
-    text-align: right;
+  font-size: 0.78rem;
+  color: #555;
+  text-align: right;
 }
 
 #emit-z-distribution {
-    display: block;
-    width: 100%;
-    height: 7rem;
-    overflow: visible;
+  display: block;
+  width: 100%;
+  height: 7rem;
+  overflow: visible;
 }
 
 .emit-distribution-base {
-    fill: rgba(90, 90, 90, 0.22);
-    stroke: rgba(50, 50, 50, 0.48);
-    stroke-width: 1;
+  fill: rgba(90, 90, 90, 0.22);
+  stroke: rgba(50, 50, 50, 0.48);
+  stroke-width: 1;
 }
 
 .emit-distribution-selected {
-    fill: rgba(30, 100, 170, 0.58);
-    stroke: rgba(20, 75, 130, 0.88);
-    stroke-width: 1;
+  fill: rgba(30, 100, 170, 0.58);
+  stroke: rgba(20, 75, 130, 0.88);
+  stroke-width: 1;
 }
 
 .emit-distribution-axis {
-    stroke: #555;
-    stroke-width: 1;
+  stroke: #555;
+  stroke-width: 1;
 }
 
 .emit-distribution-threshold {
-    stroke: #111;
-    stroke-width: 1.4;
-    stroke-dasharray: 4 3;
-    pointer-events: none;
+  stroke: #111;
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
 }
 
 .emit-distribution-label {
-    fill: #555;
-    font-size: 11px;
+  fill: #555;
+  font-size: 11px;
 }
 
 #emit-slider-row {
-    display: grid;
-    grid-template-columns: auto minmax(8rem, 1fr) auto auto;
-    align-items: center;
-    gap: 0.55rem;
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 #emit-z-slider {
-    width: 100%;
-    margin: 0;
+  width: 100%;
+  margin: 0;
 }
 
 #emit-z-min,
 #emit-z-max {
-    min-width: 2.5em;
-    font-variant-numeric: tabular-nums;
-    font-size: 0.75rem;
-    color: #555;
+  min-width: 2.5em;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: #555;
 }
 
 #emit-z-max {
-    text-align: right;
+  text-align: right;
 }
 
 #emit-z-reset {
-    padding: 0.2rem 0.55rem;
-    border: 1px solid #999;
-    border-radius: 0.35rem;
-    background: #fff;
-    font: inherit;
-    font-size: 0.75rem;
-    cursor: pointer;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid #999;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
 }
 
 #emit-z-reset:hover {
-    background: #f2f2f2;
+  background: #f2f2f2;
 }
 
 .edge .edge-line {
-    stroke: #777;
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  stroke: #777;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .edge .edge-hit {
-    stroke: transparent;
-    stroke-width: 12;
-    pointer-events: stroke;
+  stroke: transparent;
+  stroke-width: 12;
+  pointer-events: stroke;
 }
 
 .edge .edge-label {
-    font-size: 12px;
-    dominant-baseline: middle;
+  font-size: 12px;
+  dominant-baseline: middle;
 }
 
 .node circle {
-    fill: #fff;
-    stroke: #222;
+  fill: #fff;
+  stroke: #222;
 }
 
 .node text {
-    pointer-events: none;
+  pointer-events: none;
 }
 
 #emit-arrow path {
-    fill: #777;
+  fill: #777;
 }
 
 #emit-tip,
 #tip {
-    position: fixed;
-    z-index: 20;
-    display: none;
-    max-width: 34rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid #aaa;
-    border-radius: 0.35rem;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    pointer-events: none;
+  position: fixed;
+  z-index: 20;
+  display: none;
+  max-width: 34rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #aaa;
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  pointer-events: none;
 }
 
-.node.font-rank-0 text { opacity: 0.55; font-weight: 400; }
-.node.font-rank-1 text { opacity: 0.60; font-weight: 400; }
-.node.font-rank-2 text { opacity: 0.65; font-weight: 400; }
-.node.font-rank-3 text { opacity: 0.70; font-weight: 400; }
-.node.font-rank-4 text { opacity: 0.75; font-weight: 400; }
-.node.font-rank-5 text { opacity: 0.80; font-weight: 500; }
-.node.font-rank-6 text { opacity: 0.85; font-weight: 500; }
-.node.font-rank-7 text { opacity: 0.90; font-weight: 600; }
-.node.font-rank-8 text { opacity: 0.95; font-weight: 700; }
-.node.font-rank-9 text { opacity: 1.00; font-weight: 700; }
+.node.font-rank-0 text {
+  opacity: 0.55;
+  font-weight: 400;
+}
+.node.font-rank-1 text {
+  opacity: 0.6;
+  font-weight: 400;
+}
+.node.font-rank-2 text {
+  opacity: 0.65;
+  font-weight: 400;
+}
+.node.font-rank-3 text {
+  opacity: 0.7;
+  font-weight: 400;
+}
+.node.font-rank-4 text {
+  opacity: 0.75;
+  font-weight: 400;
+}
+.node.font-rank-5 text {
+  opacity: 0.8;
+  font-weight: 500;
+}
+.node.font-rank-6 text {
+  opacity: 0.85;
+  font-weight: 500;
+}
+.node.font-rank-7 text {
+  opacity: 0.9;
+  font-weight: 600;
+}
+.node.font-rank-8 text {
+  opacity: 0.95;
+  font-weight: 700;
+}
+.node.font-rank-9 text {
+  opacity: 1;
+  font-weight: 700;
+}
 
-.node.font-rank-0 circle { stroke-width: 0.20; }
-.node.font-rank-1 circle { stroke-width: 0.30; }
-.node.font-rank-2 circle { stroke-width: 0.40; }
-.node.font-rank-3 circle { stroke-width: 0.50; }
-.node.font-rank-4 circle { stroke-width: 0.70; }
-.node.font-rank-5 circle { stroke-width: 0.90; }
-.node.font-rank-6 circle { stroke-width: 1.10; }
-.node.font-rank-7 circle { stroke-width: 1.40; }
-.node.font-rank-8 circle { stroke-width: 1.80; }
-.node.font-rank-9 circle { stroke-width: 2.20; }
+.node.font-rank-0 circle {
+  stroke-width: 0.2;
+}
+.node.font-rank-1 circle {
+  stroke-width: 0.3;
+}
+.node.font-rank-2 circle {
+  stroke-width: 0.4;
+}
+.node.font-rank-3 circle {
+  stroke-width: 0.5;
+}
+.node.font-rank-4 circle {
+  stroke-width: 0.7;
+}
+.node.font-rank-5 circle {
+  stroke-width: 0.9;
+}
+.node.font-rank-6 circle {
+  stroke-width: 1.1;
+}
+.node.font-rank-7 circle {
+  stroke-width: 1.4;
+}
+.node.font-rank-8 circle {
+  stroke-width: 1.8;
+}
+.node.font-rank-9 circle {
+  stroke-width: 2.2;
+}
 
-.edge.z-rank-0 .edge-line { stroke-width: 0.20; opacity: 0.35; }
-.edge.z-rank-1 .edge-line { stroke-width: 0.30; opacity: 0.42; }
-.edge.z-rank-2 .edge-line { stroke-width: 0.40; opacity: 0.49; }
-.edge.z-rank-3 .edge-line { stroke-width: 0.55; opacity: 0.56; }
-.edge.z-rank-4 .edge-line { stroke-width: 0.70; opacity: 0.63; }
-.edge.z-rank-5 .edge-line { stroke-width: 0.90; opacity: 0.70; }
-.edge.z-rank-6 .edge-line { stroke-width: 1.15; opacity: 0.78; }
-.edge.z-rank-7 .edge-line { stroke-width: 1.45; opacity: 0.86; }
-.edge.z-rank-8 .edge-line { stroke-width: 1.80; opacity: 0.93; }
-.edge.z-rank-9 .edge-line { stroke-width: 2.20; opacity: 1.00; }
+.edge.z-rank-0 .edge-line {
+  stroke-width: 0.2;
+  opacity: 0.35;
+}
+.edge.z-rank-1 .edge-line {
+  stroke-width: 0.3;
+  opacity: 0.42;
+}
+.edge.z-rank-2 .edge-line {
+  stroke-width: 0.4;
+  opacity: 0.49;
+}
+.edge.z-rank-3 .edge-line {
+  stroke-width: 0.55;
+  opacity: 0.56;
+}
+.edge.z-rank-4 .edge-line {
+  stroke-width: 0.7;
+  opacity: 0.63;
+}
+.edge.z-rank-5 .edge-line {
+  stroke-width: 0.9;
+  opacity: 0.7;
+}
+.edge.z-rank-6 .edge-line {
+  stroke-width: 1.15;
+  opacity: 0.78;
+}
+.edge.z-rank-7 .edge-line {
+  stroke-width: 1.45;
+  opacity: 0.86;
+}
+.edge.z-rank-8 .edge-line {
+  stroke-width: 1.8;
+  opacity: 0.93;
+}
+.edge.z-rank-9 .edge-line {
+  stroke-width: 2.2;
+  opacity: 1;
+}
 
-.edge.z-negative .edge-line { stroke-dasharray: 5 3; }
-.edge.z-zero .edge-line { stroke-dasharray: 1 3; }
+.edge.z-negative .edge-line {
+  stroke-dasharray: 5 3;
+}
+.edge.z-zero .edge-line {
+  stroke-dasharray: 1 3;
+}
 
-.has-url { cursor: pointer; }
-.is-hidden { display: none; }
+.has-url {
+  cursor: pointer;
+}
+.is-hidden {
+  display: none;
+}
 
 @media (max-width: 42rem) {
-    #emit-controls {
-        top: 0.4rem;
-        left: 0.4rem;
-        width: calc(100vw - 0.8rem);
-    }
+  #emit-controls {
+    top: 0.4rem;
+    left: 0.4rem;
+    width: calc(100vw - 0.8rem);
+  }
 
-    #emit-z-distribution {
-        height: 5.5rem;
-    }
+  #emit-z-distribution {
+    height: 5.5rem;
+  }
 
-    #emit-z-count {
-        font-size: 0.7rem;
-    }
+  #emit-z-count {
+    font-size: 0.7rem;
+  }
+}
+
+#emit-command-panel {
+  box-sizing: border-box;
+  max-width: min(72rem, calc(100vw - 2rem));
+  max-height: 12rem;
+  margin: 0.75rem auto 0;
+  padding: 0.75rem 1rem;
+
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  border: 1px solid;
+  border-radius: 0.5rem;
+  background: rgba(127, 127, 127, 0.08);
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }

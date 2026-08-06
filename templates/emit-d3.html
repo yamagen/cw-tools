@@ -1,32 +1,59 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>cw-tools graph</title>
-  <link rel="stylesheet" href="../assets/emit-d3.css">
-</head>
-<body>
-  <section id="emit-controls" aria-label="Z threshold controls">
-    <div id="emit-control-summary">
-      <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
-      <span id="emit-z-count" aria-live="polite"></span>
-    </div>
-    <svg id="emit-z-distribution"></svg>
-    <div id="emit-slider-row">
-      <span id="emit-z-min"></span>
-      <input id="emit-z-slider" type="range" aria-label="minimum Z value">
-      <span id="emit-z-max"></span>
-      <button id="emit-z-reset" type="button">Reset</button>
-    </div>
-  </section>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>cw-tools graph</title>
+    <link rel="stylesheet" href="../assets/emit-d3.css" />
+  </head>
+  <body>
+    <section id="emit-controls" aria-label="Z threshold controls">
+      <div id="emit-control-summary">
+        <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+        <span id="emit-z-count" aria-live="polite"></span>
+      </div>
 
-  <svg id="emit-graph" aria-label="interactive network graph"></svg>
-  <div id="emit-tip"></div>
+      <svg id="emit-z-distribution"></svg>
+      <div id="emit-slider-row">
+        <span id="emit-z-min"></span>
+        <input id="emit-z-slider" type="range" aria-label="minimum Z value" />
+        <span id="emit-z-max"></span>
+        <button id="emit-z-reset" type="button">Reset</button>
+        <button id="emit-command-toggle" type="button">Command</button>
+      </div>
+      <pre id="emit-command-panel" hidden></pre>
+    </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-  <script src="emit-data.js"></script>
-  <script src="../assets/emit-d3.js"></script>
-  <script src="../assets/emit-slider.js"></script>
-</body>
+    <svg id="emit-graph" aria-label="interactive network graph"></svg>
+
+    <div id="emit-tip"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script src="emit-data.js"></script>
+    <script src="../assets/emit-d3.js"></script>
+    <script src="../assets/emit-slider.js"></script>
+
+    <script>
+      const commandPanel = document.getElementById("emit-command-panel");
+      const commandButton = document.getElementById("emit-command-toggle");
+
+      fetch("t.command")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.text();
+        })
+        .then((command) => {
+          commandPanel.textContent = command.trim();
+        })
+        .catch((error) => {
+          commandPanel.textContent = `Command file could not be loaded: ${error.message}`;
+        });
+
+      commandButton.addEventListener("click", () => {
+        commandPanel.hidden = !commandPanel.hidden;
+      });
+    </script>
+  </body>
 </html>
