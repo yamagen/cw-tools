@@ -143,20 +143,43 @@
 
   const simulation = d3
     .forceSimulation(nodes)
+
     .force(
       "link",
       d3
         .forceLink(links)
         .id((node) => node.id)
-        .distance(data.link_distance || 30),
-      //.distance(30),
+        .distance((link) => {
+          const s = Number(link.source.degree ?? 0);
+          const t = Number(link.target.degree ?? 0);
+          const maxDegree = Math.max(s, t);
+
+          if (maxDegree >= 12) return 50;
+          if (maxDegree >= 3) return 30;
+          return 10;
+        }),
     )
-    .force("charge", d3.forceManyBody().strength(-80))
-    .force("center", d3.forceCenter(width() / 2, height() / 2))
-    .force(
-      "collision",
-      d3.forceCollide().radius((node) => Math.max(14, node.font_size * 0.9)),
-    )
+
+    //    .force("charge", d3.forceManyBody().strength(-50))
+    .force("charge", d3.forceManyBody().strength(-50))
+    //    .force(
+    //      "charge",
+    //      d3.forceManyBody().strength((node) => {
+    //        const degree = Number(node.degree ?? 0);
+    //
+    //        if (degree >= 12) return -100;
+    //        if (degree >= 6) return -40;
+    //        return -25;
+    //      }),
+    //    )
+    //    .force("center", d3.forceCenter(width() / 2, height() / 2))
+    .force("x", d3.forceX(width() / 1.4).strength(0.02))
+    .force("y", d3.forceY(height() / 2).strength(0.04))
+
+    //    .force(
+    //      "collision",
+    //      d3.forceCollide().radius((node) => Math.max(14, node.font_size * 0.9)),
+    //    )
     .on("tick", ticked)
     .on("end", () => {
       for (const node of nodes) {
