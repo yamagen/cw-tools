@@ -24,9 +24,7 @@
     throw new Error("emit-slider.js could not find the required slider controls");
   }
 
-  const zValues = data.links
-    .map((link) => Number(link.z))
-    .filter((value) => Number.isFinite(value));
+  const zValues = data.links.map((link) => Number(link.z)).filter((value) => Number.isFinite(value));
 
   if (zValues.length === 0) {
     slider.disabled = true;
@@ -79,8 +77,8 @@
   }
 
   function buildDistribution(svg, values, minimum, maximum) {
-    const width = 640;
-    const height = 132;
+    const width = 400;
+    const height = 400;
     const margin = { top: 10, right: 18, bottom: 26, left: 18 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -99,8 +97,7 @@
     }
 
     const maxCount = Math.max(...bins, 1);
-    const x = (value) =>
-      margin.left + ((value - domainMin) / (domainMax - domainMin)) * innerWidth;
+    const x = (value) => margin.left + ((value - domainMin) / (domainMax - domainMin)) * innerWidth;
     const y = (count) => baseline - (count / maxCount) * innerHeight;
 
     svg.replaceChildren();
@@ -214,9 +211,7 @@
     }
 
     valueOutput.textContent = `Z ≥ ${formatNumber(threshold)}`;
-    countOutput.textContent =
-      `${visibleEdges} / ${data.links.length} edges · ` +
-      `${visibleNodes} / ${data.nodes.length} nodes`;
+    countOutput.textContent = `${visibleEdges} / ${data.links.length} edges · ` + `${visibleNodes} / ${data.nodes.length} nodes`;
     distributionView.update(threshold);
 
     const detail = {
