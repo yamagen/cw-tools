@@ -94,7 +94,7 @@ svg.graph {
 
 #emit-slider-row {
   display: grid;
-  grid-template-columns: auto minmax(8rem, 1fr) auto auto;
+  grid-template-columns: auto minmax(8rem, 1fr) auto auto auto;
   align-items: center;
   gap: 0.55rem;
 }
@@ -116,7 +116,8 @@ svg.graph {
   text-align: right;
 }
 
-#emit-z-reset {
+#emit-z-reset,
+#emit-reheat {
   padding: 0.2rem 0.55rem;
   border: 1px solid #999;
   border-radius: 0.35rem;
@@ -126,7 +127,8 @@ svg.graph {
   cursor: pointer;
 }
 
-#emit-z-reset:hover {
+#emit-z-reset:hover,
+#emit-reheat:hover {
   background: #f2f2f2;
 }
 

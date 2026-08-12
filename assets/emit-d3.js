@@ -24,10 +24,7 @@
 
   const graphClasses = Array.isArray(data.classes) ? data.classes : ["graph"];
 
-  svg
-    .attr("class", graphClasses.join(" "))
-    .attr("role", "img")
-    .attr("aria-label", "interactive network graph");
+  svg.attr("class", graphClasses.join(" ")).attr("role", "img").attr("aria-label", "interactive network graph");
 
   const width = () => svgElement.clientWidth || 960;
   const height = () => svgElement.clientHeight || 720;
@@ -35,17 +32,7 @@
   updateViewBox();
 
   const defs = svg.append("defs");
-  defs
-    .append("marker")
-    .attr("id", "emit-arrow")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 16)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5");
+  defs.append("marker").attr("id", "emit-arrow").attr("viewBox", "0 -5 10 10").attr("refX", 16).attr("refY", 0).attr("markerWidth", 6).attr("markerHeight", 6).attr("orient", "auto").append("path").attr("d", "M0,-5L10,0L0,5");
 
   const root = svg
     .append("g")
@@ -72,9 +59,7 @@
     .append("a")
     .attr("href", (link) => link.url || null)
     .attr("target", (link) => (link.url ? link.url_target : null))
-    .attr("rel", (link) =>
-      link.url && link.url_target === "_blank" ? "noopener noreferrer" : null,
-    );
+    .attr("rel", (link) => (link.url && link.url_target === "_blank" ? "noopener noreferrer" : null));
 
   const edgeHit = edgeAnchors.append("line").attr("class", "edge-hit");
   const edgeLine = edgeAnchors
@@ -98,17 +83,9 @@
     .attr("id", (node) => node.element_id)
     .attr("class", (node) => node.classes.join(" "))
     .attr("data-node-id", (node) => node.id)
-    .call(
-      d3
-        .drag()
-        .on("start", dragStarted)
-        .on("drag", dragged)
-        .on("end", dragEnded),
-    );
+    .call(d3.drag().on("start", dragStarted).on("drag", dragged).on("end", dragEnded));
 
-  nodeGroups
-    .append("circle")
-    .attr("r", (node) => Math.max(9, node.font_size * 0.7));
+  nodeGroups.append("circle").attr("r", (node) => Math.max(9, node.font_size * 0.7));
 
   nodeGroups
     .append("text")
@@ -129,9 +106,7 @@
 
   function moveTip(event) {
     if (!tip) return;
-    tip
-      .style("left", `${event.clientX + 12}px`)
-      .style("top", `${event.clientY + 12}px`);
+    tip.style("left", `${event.clientX + 12}px`).style("top", `${event.clientY + 12}px`);
   }
 
   function hideTip() {
@@ -139,25 +114,12 @@
   }
 
   nodeGroups
-    .on("mouseenter", (event, node) =>
-      showTip(
-        event,
-        `label: ${node.label}\nid: ${node.id}\ndf: ${node.df}\nidf: ${node.idf}` +
-          `\nfq: ${node.fq ?? "NA"}\ndegree: ${node.degree}`,
-      ),
-    )
+    .on("mouseenter", (event, node) => showTip(event, `label: ${node.label}\nid: ${node.id}\ndf: ${node.df}\nidf: ${node.idf}` + `\nfq: ${node.fq ?? "NA"}\ndegree: ${node.degree}`))
     .on("mousemove", moveTip)
     .on("mouseleave", hideTip);
 
   edgeGroups
-    .on("mouseenter", (event, link) =>
-      showTip(
-        event,
-        `source: ${endpointId(link.source)}\ntarget: ${endpointId(link.target)}` +
-          `\nctf: ${link.ctf}\ncdf: ${link.cdf}\ncw: ${link.cw}\nz: ${link.z}` +
-          `\nunit_ids: ${link.unit_ids.join(", ")}`,
-      ),
-    )
+    .on("mouseenter", (event, link) => showTip(event, `source: ${endpointId(link.source)}\ntarget: ${endpointId(link.target)}` + `\nctf: ${link.ctf}\ncdf: ${link.cdf}\ncw: ${link.cw}\nz: ${link.z}` + `\nunit_ids: ${link.unit_ids.join(", ")}`))
     .on("mousemove", moveTip)
     .on("mouseleave", hideTip);
 
@@ -174,9 +136,7 @@
       .attr("x2", (link) => link.target.x)
       .attr("y2", (link) => link.target.y);
 
-    edgeLabel
-      .attr("x", (link) => (link.source.x + link.target.x) / 2)
-      .attr("y", (link) => (link.source.y + link.target.y) / 2);
+    edgeLabel.attr("x", (link) => (link.source.x + link.target.x) / 2).attr("y", (link) => (link.source.y + link.target.y) / 2);
 
     nodeGroups.attr("transform", (node) => `translate(${node.x},${node.y})`);
   }
@@ -188,9 +148,10 @@
       d3
         .forceLink(links)
         .id((node) => node.id)
-        .distance(data.link_distance || 78),
+        .distance(data.link_distance || 30),
+      //.distance(30),
     )
-    .force("charge", d3.forceManyBody().strength(-180))
+    .force("charge", d3.forceManyBody().strength(-80))
     .force("center", d3.forceCenter(width() / 2, height() / 2))
     .force(
       "collision",
@@ -218,6 +179,21 @@
   function dragged(event, node) {
     node.fx = event.x;
     node.fy = event.y;
+  }
+
+  function releaseNodes() {
+    nodes.forEach((node) => {
+      node.fx = null;
+      node.fy = null;
+    });
+
+    simulation.alpha(1).restart();
+  }
+
+  const reheatButton = document.getElementById("emit-reheat");
+
+  if (reheatButton) {
+    reheatButton.addEventListener("click", releaseNodes);
   }
 
   function dragEnded(event, node) {
