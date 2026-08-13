@@ -93,9 +93,23 @@ svg.graph {
   font-size: 11px;
 }
 
+.emit-distribution-zero {
+  stroke: #7a668f;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.emit-distribution-smooth {
+  fill: none;
+  stroke: #444;
+  stroke-width: 1.2;
+  pointer-events: none;
+}
+
 #emit-slider-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr;
   gap: 0.55rem;
 }
 
@@ -106,6 +120,7 @@ svg.graph {
 
 #emit-z-min,
 #emit-z-max {
+  display: none;
   min-width: 2.5em;
   font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
@@ -133,10 +148,8 @@ svg.graph {
 }
 
 .edge .edge-line {
-  stroke: #777;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: #000;
+  stroke-width: 0.1;
 }
 
 .edge .edge-hit {
@@ -148,11 +161,6 @@ svg.graph {
 .edge .edge-label {
   font-size: 6px;
   dominant-baseline: middle;
-}
-
-.node circle {
-  fill: #fff;
-  stroke: #222;
 }
 
 .node text {
@@ -226,14 +234,10 @@ svg.graph {
   stroke-width: 0.1;
 }
 
-.edge .edge-line {
-  stroke: #000;
-  stroke-width: 0.1;
-}
-
 .edge.z-negative .edge-line {
   stroke-dasharray: 5 3;
 }
+
 .edge.z-zero .edge-line {
   stroke-dasharray: 1 3;
 }
@@ -279,4 +283,10 @@ svg.graph {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85rem;
   line-height: 1.45;
+}
+
+#emit-button-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
 }

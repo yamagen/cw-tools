@@ -76,6 +76,41 @@
     return element;
   }
 
+  function sturgesBinCount(values) {
+    return Math.max(1, Math.ceil(1 + Math.log2(values.length)));
+  }
+
+  function getBinCount(values, minimum, maximum, method = "sturges") {
+    switch (method) {
+      case "sturges":
+      default:
+        return sturgesBinCount(values);
+    }
+  }
+
+  // Catmull-Rom spline path generator for SVG
+  function catmullRomPath(points, tension = 1) {
+    if (points.length < 2) return "";
+
+    let d = `M ${points[0].x} ${points[0].y}`;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+
+      const c1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+      const c1y = p1.y + ((p2.y - p0.y) / 6) * tension;
+      const c2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+      const c2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    }
+
+    return d;
+  }
+
   function buildDistribution(svg, values, minimum, maximum) {
     const width = 400;
     const height = 400;
@@ -86,7 +121,8 @@
     const domainPadding = minimum === maximum ? Math.max(0.5, Math.abs(minimum) * 0.05) : 0;
     const domainMin = minimum - domainPadding;
     const domainMax = maximum + domainPadding;
-    const binCount = Math.max(16, Math.min(60, Math.round(Math.sqrt(values.length) * 2)));
+    //    const binCount = Math.max(16, Math.min(60, Math.round(Math.sqrt(values.length) * 2)));
+    const binCount = getBinCount(values, minimum, maximum);
     const binWidth = (domainMax - domainMin) / binCount;
     const bins = Array.from({ length: binCount }, () => 0);
 
@@ -99,6 +135,11 @@
     const maxCount = Math.max(...bins, 1);
     const x = (value) => margin.left + ((value - domainMin) / (domainMax - domainMin)) * innerWidth;
     const y = (count) => baseline - (count / maxCount) * innerHeight;
+
+    const smoothPoints = bins.map((count, index) => ({
+      x: margin.left + ((index + 0.5) / binCount) * innerWidth,
+      y: y(count),
+    }));
 
     svg.replaceChildren();
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -128,6 +169,7 @@
     svg.append(defs);
 
     svg.append(svgElement("path", { d: pathData, class: "emit-distribution-base" }));
+
     svg.append(
       svgElement("path", {
         d: pathData,
@@ -135,6 +177,14 @@
         "clip-path": `url(#${clipId})`,
       }),
     );
+
+    svg.append(
+      svgElement("path", {
+        d: catmullRomPath(smoothPoints),
+        class: "emit-distribution-smooth",
+      }),
+    );
+
     svg.append(
       svgElement("line", {
         x1: margin.left,
@@ -144,6 +194,30 @@
         class: "emit-distribution-axis",
       }),
     );
+
+    if (domainMin <= 0 && domainMax >= 0) {
+      const zeroX = x(0);
+
+      svg.append(
+        svgElement("line", {
+          x1: zeroX,
+          y1: margin.top,
+          x2: zeroX,
+          y2: baseline,
+          class: "emit-distribution-zero",
+        }),
+      );
+
+      const zeroLabel = svgElement("text", {
+        x: zeroX,
+        y: height - 6,
+        class: "emit-distribution-label",
+        "text-anchor": "middle",
+      });
+
+      zeroLabel.textContent = "0";
+      svg.append(zeroLabel);
+    }
 
     const thresholdLine = svgElement("line", {
       x1: margin.left,
