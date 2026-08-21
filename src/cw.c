@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define PROG_NAME "cw"
-#define PROG_VERSION "0.9.1"
+#define PROG_VERSION "0.9.2"
 
 typedef enum {
     CW_METHOD_BASIC = 1,
@@ -147,7 +147,7 @@ static unsigned parse_field_selection(const char *text, const char *option_name)
     const unsigned char *p = (const unsigned char *)text;
 
     while (*p != '\0') {
-        if (*p >= '1' && *p <= '4') {
+        if (*p >= '1' && *p <= '5') {
             unsigned field = (unsigned)(*p - '0');
             mask |= CWT_TOKEN_FIELD_BIT(field);
             p++;
@@ -165,7 +165,7 @@ static unsigned parse_field_selection(const char *text, const char *option_name)
 
         fprintf(stderr,
                 "%s: %s: invalid field selection '%s' "
-                "(use fields 1 to 4, for example 2,3 or 2f.3f)\n",
+                "(use fields 1 to 5, for example 2,3 or 5)\n",
                 PROG_NAME, option_name, text);
         exit(EXIT_FAILURE);
     }
@@ -628,8 +628,8 @@ static void print_help(FILE *stream)
             "Input:\n"
             "  unit_id token1 token2 [fq1 fq2]\n"
             "\n"
-            "Each token may contain one to four slash-separated fields:\n"
-            "  f1[/f2[/f3[/f4]]]\n"
+            "Each token may contain one to five slash-separated fields:\n"
+            "  f1[/f2[/f3[/f4[/f5]]]]\n"
             "\n"
             "Output:\n"
             "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...\n"
@@ -658,7 +658,7 @@ static void print_help(FILE *stream)
             "Options:\n"
             "  -p, --pattern-fields LIST\n"
             "                   fields used for the hash pattern\n"
-            "                   (examples: 2,3  2f.3f  2)\n"
+            "                   (examples: 2,3  2f.3f  5)\n"
             "  -k, --key REGEX  restrict pair occurrences to units containing a\n"
             "                   pattern matching a POSIX extended regex\n"
             "      --idf-out   write pattern and IDF to standard output, then exit\n"
@@ -730,7 +730,9 @@ int main(int argc, char **argv)
             idf_in_path = optarg;
             break;
         case 's':
-            pattern_fields = CWT_TOKEN_FIELD_ALL;
+            pattern_fields =
+                CWT_TOKEN_FIELD_BIT(1) | CWT_TOKEN_FIELD_BIT(2) |
+                CWT_TOKEN_FIELD_BIT(3) | CWT_TOKEN_FIELD_BIT(4);
             break;
         case 'h':
             print_help(stdout);
