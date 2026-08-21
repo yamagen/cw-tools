@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#define CWT_TOKEN_FIELD_MAX 4
+#define CWT_TOKEN_FIELD_MAX 5
 #define CWT_TOKEN_FIELD_BIT(field_number) (1u << ((field_number) - 1u))
 #define CWT_TOKEN_FIELD_ALL ((1u << CWT_TOKEN_FIELD_MAX) - 1u)
 
