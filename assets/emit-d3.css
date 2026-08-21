@@ -159,6 +159,7 @@ svg.graph {
 }
 
 .edge .edge-label {
+  display: none;
   font-size: 6px;
   dominant-baseline: middle;
 }

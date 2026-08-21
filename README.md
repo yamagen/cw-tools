@@ -211,7 +211,7 @@ responsibilities are:
 1. retain the complete representative tokens;
 2. project selected fields onto computational patterns;
 3. calculate global token DF and IDF;
-4. calculate global pair DF;
+4. calculate $\mathrm{cdf}_{C}$, the cooccurrent document frequency of each pair in the complete corpus;
 5. define a local set with `-k`, while retaining the complete input as the
    global reference corpus;
 6. calculate local pair and token frequencies;
@@ -266,8 +266,9 @@ Let:
 | $S$ | selected local unit set; $(S=C$) when `-k` is absent |
 | $\mathrm{df}_{C}(t)$ | global unit frequency of pattern $t$ |
 | $\mathrm{idf}_{C}(t)$ | global inverse document frequency of pattern $t$ |
-| $\mathrm{gdf}_{C}(t_1,t_2)$ | global unit frequency of the pair |
-| $\mathrm{ctf}_{S}(t_1,t_2)$ | retained local pair frequency |
+| $\mathrm{cdf}_{C}(t_1,t_2)$ | cooccurrent document frequency of the pair in the complete corpus $C$ |
+| $\mathrm{ctf}_{S}(t_1,t_2)$ | retained local pair frequency in the selected set $S$ |
+| $\mathrm{cdf}_{S}(t_1,t_2)$ | cooccurrent document frequency of the pair in the selected set $S$ |
 
 The key option defines the local observation set without changing the global
 IDF reference:
@@ -288,7 +289,7 @@ and pair is still weighted against the full corpus.
 |    `1` | compact explanation of the basic CW principle             |
 |    `7` | historically adjusted waka-graph formula; current default |
 |   `12` | experimental weighting of locally rare patterns           |
-|   `16` | local repetition ×global pair weight ×global token weight |
+|   `16` | local repetition × global pair document-frequency weight × global token weight |
 
 For publication and reproducibility, specify the method explicitly:
 
@@ -305,7 +306,7 @@ $$
 CW_{16}(t_1,t_2;S,C) =
 \left( 1+\ln \mathrm{ctf}_{S}(t_1,t_2) \right)
 \sqrt{ \mathrm{idf}_{C}(t_1)\hspace{.2em}\mathrm{idf}_{C}(t_2) }
-\left( 1+ \ln \left( \frac{N}{\mathrm{gdf}_{C}(t_1,t_2)} \right) \right)
+\left( 1+ \ln \left( \frac{N}{\mathrm{cdf}_{C}(t_1,t_2)} \right) \right)
 $$
 
 It combines three kinds of evidence:
@@ -314,8 +315,8 @@ It combines three kinds of evidence:
 global token weight
     whether the two patterns themselves are informative
 
-global pair weight
-    whether their combination is unusual in the complete corpus
+global pair document-frequency weight
+    whether their combination is unusual across the units of the complete corpus
 
 local repetition
     whether that combination recurs in the selected local set
@@ -323,8 +324,8 @@ local repetition
 
 In words:
 
-> CW is high when globally weighty patterns form a globally unusual
-> combination that recurs in the selected local set.
+> CW is high when globally weighty patterns form a combination with low
+> $\mathrm{cdf}_{C}$ that recurs in the selected local set.
 
 The methods are not interchangeable rescalings. Raw CW values and thresholds
 should be interpreted separately for each method. Z values are often more
@@ -343,7 +344,7 @@ token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...
 |      1 | `token1`     | representative complete token for pattern 1 |
 |      2 | `token2`     | representative complete token for pattern 2 |
 |      3 | `ctf`        | retained local pair frequency               |
-|      4 | `cdf`        | selected-unit frequency of the pair         |
+|      4 | `cdf`        | $\mathrm{cdf}_{S}$: selected-unit frequency of the pair |
 |      5 | `df1`        | global unit frequency of pattern 1          |
 |      6 | `idf1`       | global IDF of pattern 1                     |
 |      7 | `fq1`        | local occurrence frequency of pattern 1     |
@@ -355,9 +356,15 @@ token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...
 |  13... | `unit_id...` | selected units containing the pair          |
 
 With the default all-pairs output, `ctf` and `cdf` are normally numerically
-equal. Adjacent or windowed `pair` output may contain repeated occurrences
-inside one unit, in which case `ctf` can exceed `cdf`. The two concepts
-therefore remain distinct in the interface.
+equal. Here the output-column `cdf` is $\mathrm{cdf}_{S}$, the number of
+selected units containing the pair. Adjacent or windowed `pair` output may
+contain repeated occurrences inside one unit, in which case `ctf` can exceed
+`cdf`. The two concepts therefore remain distinct in the interface.
+
+Method 16 additionally uses $\mathrm{cdf}_{C}$, the same document-frequency
+concept measured over the complete input corpus $C$. Thus $\mathrm{cdf}_{S}$
+and $\mathrm{cdf}_{C}$ differ only in their reference sets: the selected local
+set $S$ versus the complete corpus $C$.
 
 See [`docs/man-cw.md`](docs/man-cw.md) for all formulas, notation, options, and
 citation-ready descriptions.
