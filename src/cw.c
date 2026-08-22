@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define PROG_NAME "cw"
-#define PROG_VERSION "0.9.4"
+#define PROG_VERSION "0.9.5"
 
 typedef enum {
   CW_METHOD_BASIC = 1,
@@ -103,15 +103,84 @@ static int pattern_matches_regex(const char *pattern, const regex_t *regex) {
   return regexec(regex, pattern, 0, NULL, 0) == 0;
 }
 
+static char *project_pattern(const char *token, unsigned pattern_fields,
+                             size_t pattern_substr) {
+  char *pattern = cwt_token_project(token, pattern_fields);
+
+  if (pattern_substr > 0 && strlen(pattern) > pattern_substr)
+    pattern[pattern_substr] = '\0';
+  return pattern;
+}
+
+/*
+ * Free-key selection must search every complete token, not merely the
+ * representative token retained after pattern projection.  Because cw's
+ * normal statistics reader consumes the input stream, make a temporary copy
+ * while resolving matching complete tokens to their projected patterns.
+ */
+static FILE *prepare_free_key_stream(FILE *stream, const char *source,
+                                     const regex_t *key_regex,
+                                     unsigned pattern_fields,
+                                     size_t pattern_substr,
+                                     StringSetBuilder *matching_patterns) {
+  FILE *copy = tmpfile();
+  if (copy == NULL)
+    die_errno("tmpfile");
+
+  char *line = NULL;
+  size_t capacity = 0;
+
+  while (getline(&line, &capacity, stream) != -1) {
+    if (fputs(line, copy) == EOF) {
+      free(line);
+      fclose(copy);
+      die_errno("tmpfile");
+    }
+
+    char *work = xstrdup(line);
+    char *saveptr = NULL;
+    char *unit = strtok_r(work, " \t\r\n", &saveptr);
+
+    if (unit != NULL && unit[0] != '#') {
+      char *left = strtok_r(NULL, " \t\r\n", &saveptr);
+      char *right = strtok_r(NULL, " \t\r\n", &saveptr);
+      const char *tokens[2] = {left, right};
+
+      for (size_t i = 0; i < 2; i++) {
+        if (tokens[i] == NULL || !pattern_matches_regex(tokens[i], key_regex))
+          continue;
+
+        char *pattern = project_pattern(tokens[i], pattern_fields,
+                                        pattern_substr);
+        set_builder_append(matching_patterns, pattern);
+      }
+    }
+    free(work);
+  }
+
+  if (ferror(stream)) {
+    free(line);
+    fclose(copy);
+    die_errno(source);
+  }
+  free(line);
+
+  if (fflush(copy) != 0 || fseek(copy, 0, SEEK_SET) != 0) {
+    fclose(copy);
+    die_errno("tmpfile");
+  }
+
+  set_builder_sort_unique(matching_patterns);
+  return copy;
+}
+
 static void collect_matching_patterns(const CwtCorpusStats *stats,
                                       const regex_t *key_regex,
-                                      int free_key,
                                       StringSetBuilder *matching_patterns) {
   for (size_t i = 0; i < stats->token_count; i++) {
     const CwtTokenStat *token = &stats->tokens[i];
-    const char *candidate = free_key ? token->token : token->pattern;
 
-    if (pattern_matches_regex(candidate, key_regex))
+    if (pattern_matches_regex(token->pattern, key_regex))
       set_builder_append(matching_patterns, token->pattern);
   }
   set_builder_sort_unique(matching_patterns);
@@ -565,13 +634,14 @@ static void print_help(FILE *stream) {
       "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...\n"
       "\n"
       "Pattern fields determine token identity, hash registration, pair\n"
-      "identity, df/idf, and local fq.  The complete representative token\n"
-      "is retained for display and can be searched with -f/--free-key.\n"
+      "identity, df/idf, and local fq.  Complete tokens are retained for\n"
+      "display; -f/--free-key searches all complete input tokens before\n"
+      "projecting matches to the current pattern identity.\n"
       "\n"
       "Key selection modes are mutually exclusive:\n"
       "  -k/--exact-key searches the projected computational pattern.\n"
-      "  -f/--free-key searches the representative complete token, then uses\n"
-      "  its projected pattern as the computational key.\n"
+      "  -f/--free-key searches complete input tokens, then uses their\n"
+      "  projected patterns as computational keys.\n"
       "\n"
       "The default pattern is fields 2,3,4.  A one-field token falls back\n"
       "to field 1.  pair 0.2.0 supplies exact per-unit token counts;\n"
@@ -594,7 +664,7 @@ static void print_help(FILE *stream) {
       "  -k, --exact-key REGEX\n"
       "                   select units by projected pattern (POSIX ERE)\n"
       "  -f, --free-key REGEX\n"
-      "                   select units by representative complete token (POSIX ERE)\n"
+      "                   select units by complete input token (POSIX ERE)\n"
       "      --idf-out    write pattern and IDF to standard output, then exit\n"
       "      --idf-in FILE use IDF values from FILE\n"
       "  -M, --method N   CW method: 1, 7, 12, or 16 (default: 7)\n"
@@ -760,6 +830,19 @@ int main(int argc, char **argv) {
       die_errno(source);
   }
 
+  StringSetBuilder matching_patterns = {0};
+
+  if (free_key_mode) {
+    FILE *prepared = prepare_free_key_stream(stream, source, &key_regex,
+                                             pattern_fields, pattern_substr,
+                                             &matching_patterns);
+    if (stream != stdin && fclose(stream) != 0) {
+      fclose(prepared);
+      die_errno(source);
+    }
+    stream = prepared;
+  }
+
   CwtCorpusStats stats;
   cwt_stats_init(&stats);
 
@@ -791,7 +874,6 @@ int main(int argc, char **argv) {
     die_errno(source);
   }
 
-  StringSetBuilder matching_patterns = {0};
   StringSetBuilder key_units = {0};
   const StringSetBuilder *selection = NULL;
   size_t key_fq = 0;
@@ -799,8 +881,9 @@ int main(int argc, char **argv) {
   if (key != NULL) {
     int key_fq_available = 1;
 
-    collect_matching_patterns(&stats, &key_regex, free_key_mode,
-                              &matching_patterns);
+    if (!free_key_mode)
+      collect_matching_patterns(&stats, &key_regex, &matching_patterns);
+
     if (matching_patterns.len == 0)
       goto cleanup;
 
