@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define PROG_NAME "cw"
-#define PROG_VERSION "0.9.3"
+#define PROG_VERSION "0.9.4"
 
 typedef enum {
   CW_METHOD_BASIC = 1,
@@ -103,32 +103,34 @@ static int pattern_matches_regex(const char *pattern, const regex_t *regex) {
   return regexec(regex, pattern, 0, NULL, 0) == 0;
 }
 
-static void collect_key_units(const CwtCorpusStats *stats,
-                              const regex_t *key_regex,
-                              StringSetBuilder *key_units) {
-  StringSetBuilder matching_patterns = {0};
-
-  /* Match each distinct hash pattern only once. */
+static void collect_matching_patterns(const CwtCorpusStats *stats,
+                                      const regex_t *key_regex,
+                                      int free_key,
+                                      StringSetBuilder *matching_patterns) {
   for (size_t i = 0; i < stats->token_count; i++) {
-    const char *pattern = stats->tokens[i].pattern;
+    const CwtTokenStat *token = &stats->tokens[i];
+    const char *candidate = free_key ? token->token : token->pattern;
 
-    if (pattern_matches_regex(pattern, key_regex))
-      set_builder_append(&matching_patterns, pattern);
+    if (pattern_matches_regex(candidate, key_regex))
+      set_builder_append(matching_patterns, token->pattern);
   }
-  set_builder_sort_unique(&matching_patterns);
+  set_builder_sort_unique(matching_patterns);
+}
 
+static void collect_key_units(const CwtCorpusStats *stats,
+                              const StringSetBuilder *matching_patterns,
+                              StringSetBuilder *key_units) {
   for (size_t i = 0; i < stats->pair_count; i++) {
     const CwtPairStat *pair = &stats->pairs[i];
 
-    if (!string_set_contains(&matching_patterns, pair->pattern1) &&
-        !string_set_contains(&matching_patterns, pair->pattern2))
+    if (!string_set_contains(matching_patterns, pair->pattern1) &&
+        !string_set_contains(matching_patterns, pair->pattern2))
       continue;
 
     for (size_t j = 0; j < pair->unit_ids.len; j++)
       set_builder_append(key_units, pair->unit_ids.items[j]);
   }
 
-  free(matching_patterns.items);
   set_builder_sort_unique(key_units);
 }
 
@@ -272,7 +274,7 @@ static void apply_external_idf(CwtCorpusStats *stats, const IdfTable *table,
               token->pattern);
       fprintf(stderr,
               "%s: regenerate the IDF file with matching "
-              "--pattern-fields using cw --idf-out\n",
+              "--pattern-fields and --substr using cw --idf-out\n",
               PROG_NAME);
       exit(EXIT_FAILURE);
     }
@@ -420,35 +422,13 @@ static double calculate_cw(CwMethod method, const CwtPairStat *pair, size_t ctf,
     return (1.0 + log((double)ctf)) * token_weight;
 
   case CW_METHOD_WAKA_GRAPH:
-    /*
-     * Historical method 7 (the default in the earlier cw.c):
-     *
-     *   (1 + log_10(pair_fq)) * sqrt(idf1 * idf2)
-     *   ----------------------------------------------------
-     *              1 + log_10(key_fq)
-     */
     return (1.0 + log((double)ctf) / log(CW_LOG_BASE)) * token_weight /
            (1.0 + log((double)key_fq) / log(CW_LOG_BASE));
 
   case CW_METHOD_RARE_PATTERN:
-    /*
-     * Historical method 12.  Preserve the original integer N/cidf
-     * quotient exactly: key_fq and pair frequency were both integers.
-     */
     return (1.0 + (double)(key_fq / ctf)) * token_weight;
 
   case CW_METHOD_GLOBAL_PAIR:
-    /*
-     * Historical method 16 (marked "best" in the earlier cw.c):
-     *
-     *   (1 + ln(N / global_pair_df))
-     *       * sqrt(idf1 * idf2)
-     *       * (1 + ln(local_pair_ctf))
-     *
-     * pair->cdf is the number of global input units containing the
-     * pair.  Use floating-point division here rather than reproducing
-     * the accidental integer division of the historical C expression.
-     */
     return (1.0 + log((double)global_unit_count / (double)pair->cdf)) *
            token_weight * (1.0 + log((double)ctf));
   }
@@ -457,7 +437,7 @@ static double calculate_cw(CwMethod method, const CwtPairStat *pair, size_t ctf,
 }
 
 static size_t calculate_key_frequency(const CwtCorpusStats *stats,
-                                      const regex_t *key_regex,
+                                      const StringSetBuilder *matching_patterns,
                                       const StringSetBuilder *key_units,
                                       int *available) {
   size_t key_fq = 0;
@@ -467,7 +447,7 @@ static size_t calculate_key_frequency(const CwtCorpusStats *stats,
   for (size_t i = 0; i < stats->token_count; i++) {
     const CwtTokenStat *token = &stats->tokens[i];
 
-    if (!pattern_matches_regex(token->pattern, key_regex))
+    if (!string_set_contains(matching_patterns, token->pattern))
       continue;
 
     matched = 1;
@@ -483,13 +463,6 @@ static size_t calculate_key_frequency(const CwtCorpusStats *stats,
   return key_fq;
 }
 
-/*
- * Calculate the mean and sample standard deviation of the CW values in the
- * selected pair set.  This is the same one-pass recurrence used by the
- * earlier cw implementation:
- *
- *     sd = sqrt(M2 / (n - 1))
- */
 static CwDistribution
 calculate_cw_distribution(const CwtCorpusStats *stats,
                           const StringSetBuilder *key_units, CwMethod method,
@@ -592,37 +565,37 @@ static void print_help(FILE *stream) {
       "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...\n"
       "\n"
       "Pattern fields determine token identity, hash registration, pair\n"
-      "identity, df/idf, local fq, and the string searched by -k.  The "
-      "complete\n"
-      "original token fields are retained for emit.  If several original\n"
-      "tokens share one pattern, the form occurring in the most units is\n"
-      "used as the representative; lexical order breaks ties.\n"
+      "identity, df/idf, and local fq.  The complete representative token\n"
+      "is retained for display and can be searched with -f/--free-key.\n"
+      "\n"
+      "Key selection modes are mutually exclusive:\n"
+      "  -k/--exact-key searches the projected computational pattern.\n"
+      "  -f/--free-key searches the representative complete token, then uses\n"
+      "  its projected pattern as the computational key.\n"
       "\n"
       "The default pattern is fields 2,3,4.  A one-field token falls back\n"
       "to field 1.  pair 0.2.0 supplies exact per-unit token counts;\n"
-      "older three-column pair input remains readable, but fq is output as "
-      "'-'.\n"
+      "older three-column pair input remains readable, but fq is output as '-'.\n"
       "\n"
       "CW methods (-M 7 is the default):\n"
       "  -M 1   basic: (1 + ln(ctf)) * sqrt(idf1 * idf2)\n"
       "  -M 7   waka graph: (1 + log10(ctf)) * sqrt(idf1 * idf2)\n"
       "           divided by (1 + log10(key_fq))\n"
       "  -M 12  rare pattern: (1 + key_fq / ctf) * sqrt(idf1 * idf2)\n"
-      "           (key_fq / ctf preserves the historical integer quotient)\n"
       "  -M 16  global pair: (1 + ln(N / global_pair_df))\n"
       "           * sqrt(idf1 * idf2) * (1 + ln(local_ctf))\n"
-      "           (uses floating-point N / global_pair_df)\n"
       "  z      = (cw - mean_selected_cw) / sd_selected_cw\n"
       "\n"
       "Options:\n"
       "  -p, --pattern-fields LIST\n"
       "                   fields used for the hash pattern\n"
       "                   (examples: 2,3  2f.3f  5)\n"
-      "      --substr N   use only the first N characters of the projected "
-      "pattern\n"
-      "  -k, --key REGEX  restrict pair occurrences to units containing a\n"
-      "                   pattern matching a POSIX extended regex\n"
-      "      --idf-out   write pattern and IDF to standard output, then exit\n"
+      "      --substr N   use only the first N characters of the projected pattern\n"
+      "  -k, --exact-key REGEX\n"
+      "                   select units by projected pattern (POSIX ERE)\n"
+      "  -f, --free-key REGEX\n"
+      "                   select units by representative complete token (POSIX ERE)\n"
+      "      --idf-out    write pattern and IDF to standard output, then exit\n"
       "      --idf-in FILE use IDF values from FILE\n"
       "  -M, --method N   CW method: 1, 7, 12, or 16 (default: 7)\n"
       "  -s, --surface    compatibility alias for -p 1,2,3,4\n"
@@ -632,12 +605,12 @@ static void print_help(FILE *stream) {
 }
 
 int main(int argc, char **argv) {
-
   enum { OPT_IDF_OUT = 256, OPT_IDF_IN, OPT_SUBSTR };
   static const struct option long_options[] = {
       {"substr", required_argument, NULL, OPT_SUBSTR},
       {"pattern-fields", required_argument, NULL, 'p'},
-      {"key", required_argument, NULL, 'k'},
+      {"exact-key", required_argument, NULL, 'k'},
+      {"free-key", required_argument, NULL, 'f'},
       {"method", required_argument, NULL, 'M'},
       {"idf-out", no_argument, NULL, OPT_IDF_OUT},
       {"idf-in", required_argument, NULL, OPT_IDF_IN},
@@ -647,7 +620,8 @@ int main(int argc, char **argv) {
       {NULL, 0, NULL, 0}};
 
   size_t pattern_substr = 0;
-  const char *key = NULL;
+  const char *exact_key = NULL;
+  const char *free_key = NULL;
   const char *idf_in_path = NULL;
   int idf_out = 0;
   CwMethod method = DEFAULT_CW_METHOD;
@@ -659,14 +633,17 @@ int main(int argc, char **argv) {
 
   (void)setlocale(LC_ALL, "");
 
-  while ((option = getopt_long(argc, argv, "p:k:M:shv", long_options, NULL)) !=
+  while ((option = getopt_long(argc, argv, "p:k:f:M:shv", long_options, NULL)) !=
          -1) {
     switch (option) {
     case 'p':
       pattern_fields = parse_field_selection(optarg, "--pattern-fields");
       break;
     case 'k':
-      key = optarg;
+      exact_key = optarg;
+      break;
+    case 'f':
+      free_key = optarg;
       break;
     case 'M': {
       char *end = NULL;
@@ -682,22 +659,18 @@ int main(int argc, char **argv) {
       method = (CwMethod)value;
       break;
     }
-
     case OPT_SUBSTR: {
       char *end = NULL;
       errno = 0;
       unsigned long value = strtoul(optarg, &end, 10);
-
       if (errno != 0 || end == optarg || *end != '\0' || value == 0) {
         fprintf(stderr, "%s: --substr requires a positive integer (got '%s')\n",
                 PROG_NAME, optarg);
         return EXIT_FAILURE;
       }
-
       pattern_substr = (size_t)value;
       break;
     }
-
     case OPT_IDF_OUT:
       idf_out = 1;
       break;
@@ -720,14 +693,22 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (exact_key != NULL && free_key != NULL) {
+    fprintf(stderr,
+            "%s: -k/--exact-key and -f/--free-key cannot be used together\n",
+            PROG_NAME);
+    return EXIT_FAILURE;
+  }
+
   if (idf_out && idf_in_path != NULL) {
     fprintf(stderr, "%s: --idf-out and --idf-in cannot be used together\n",
             PROG_NAME);
     return EXIT_FAILURE;
   }
 
-  if (idf_out && key != NULL) {
-    fprintf(stderr, "%s: --idf-out cannot be combined with -k/--key\n",
+  if (idf_out && (exact_key != NULL || free_key != NULL)) {
+    fprintf(stderr,
+            "%s: --idf-out cannot be combined with -k/--exact-key or -f/--free-key\n",
             PROG_NAME);
     return EXIT_FAILURE;
   }
@@ -737,12 +718,16 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  const char *key = free_key != NULL ? free_key : exact_key;
+  int free_key_mode = free_key != NULL;
+
   if (!idf_out &&
       (method == CW_METHOD_WAKA_GRAPH || method == CW_METHOD_RARE_PATTERN) &&
       key == NULL) {
     fprintf(stderr,
-            "%s: method %d requires -k/--key because key_fq is part "
-            "of the formula (use -M 1 or -M 16 for an unselected corpus)\n",
+            "%s: method %d requires -k/--exact-key or -f/--free-key because "
+            "key_fq is part of the formula (use -M 1 or -M 16 for an "
+            "unselected corpus)\n",
             PROG_NAME, (int)method);
     return EXIT_FAILURE;
   }
@@ -752,12 +737,10 @@ int main(int argc, char **argv) {
     if (error != 0) {
       size_t size = regerror(error, &key_regex, NULL, 0);
       char *message = malloc(size);
-
       if (message == NULL) {
         fprintf(stderr, "%s: out of memory\n", PROG_NAME);
         return EXIT_FAILURE;
       }
-
       regerror(error, &key_regex, message, size);
       fprintf(stderr, "%s: invalid regular expression '%s': %s\n", PROG_NAME,
               key, message);
@@ -808,6 +791,7 @@ int main(int argc, char **argv) {
     die_errno(source);
   }
 
+  StringSetBuilder matching_patterns = {0};
   StringSetBuilder key_units = {0};
   const StringSetBuilder *selection = NULL;
   size_t key_fq = 0;
@@ -815,13 +799,18 @@ int main(int argc, char **argv) {
   if (key != NULL) {
     int key_fq_available = 1;
 
-    collect_key_units(&stats, &key_regex, &key_units);
+    collect_matching_patterns(&stats, &key_regex, free_key_mode,
+                              &matching_patterns);
+    if (matching_patterns.len == 0)
+      goto cleanup;
+
+    collect_key_units(&stats, &matching_patterns, &key_units);
     selection = &key_units;
 
     if (key_units.len == 0)
       goto cleanup;
 
-    key_fq = calculate_key_frequency(&stats, &key_regex, selection,
+    key_fq = calculate_key_frequency(&stats, &matching_patterns, selection,
                                      &key_fq_available);
     if ((method == CW_METHOD_WAKA_GRAPH || method == CW_METHOD_RARE_PATTERN) &&
         !key_fq_available) {
@@ -829,6 +818,7 @@ int main(int argc, char **argv) {
               "%s: method %d requires token frequencies; regenerate "
               "the pair data with pair 0.2.0 or later\n",
               PROG_NAME, (int)method);
+      free(matching_patterns.items);
       free(key_units.items);
       cwt_stats_free(&stats);
       if (key_regex_compiled)
@@ -838,6 +828,7 @@ int main(int argc, char **argv) {
     if ((method == CW_METHOD_WAKA_GRAPH || method == CW_METHOD_RARE_PATTERN) &&
         key_fq == 0) {
       fprintf(stderr, "%s: selected key frequency is zero\n", PROG_NAME);
+      free(matching_patterns.items);
       free(key_units.items);
       cwt_stats_free(&stats);
       if (key_regex_compiled)
@@ -849,8 +840,8 @@ int main(int argc, char **argv) {
   process_pairs(&stats, selection, method, key_fq);
 
 cleanup:
-
   idf_table_free(&idf_table);
+  free(matching_patterns.items);
   free(key_units.items);
   cwt_stats_free(&stats);
   if (key_regex_compiled)
