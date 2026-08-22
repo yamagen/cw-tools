@@ -12,13 +12,11 @@
         <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
         <span id="emit-z-count" aria-live="polite"></span>
       </div>
-
       <svg id="emit-z-distribution"></svg>
       <div id="emit-slider-row">
         <span id="emit-z-min"></span>
         <input id="emit-z-slider" type="range" aria-label="minimum Z value" />
         <span id="emit-z-max"></span>
-
         <div id="emit-button-row">
           <button id="emit-reheat">Reheat</button>
           <button id="emit-z-reset">Reset</button>
@@ -28,8 +26,15 @@
       <pre id="emit-command-panel" hidden></pre>
     </section>
 
-    <svg id="emit-graph" aria-label="interactive network graph"></svg>
+    <aside id="emit-source-panel" hidden aria-label="Source texts">
+      <header id="emit-source-header">
+        <strong id="emit-source-title">Source texts</strong>
+        <button id="emit-source-close" type="button">Close</button>
+      </header>
+      <div id="emit-source-content"></div>
+    </aside>
 
+    <svg id="emit-graph" aria-label="interactive network graph"></svg>
     <div id="emit-tip"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
@@ -43,9 +48,7 @@
 
       fetch("t.command")
         .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return response.text();
         })
         .then((command) => {

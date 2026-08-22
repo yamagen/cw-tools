@@ -1,0 +1,1 @@
+grep "^1" tests/data/hachidaishu-bg-split.txt \\n | ./pair \\n | ./cw -p 5 --substr 16 -M 16 \\n     -f "桜" \\n     --idf-in tests/data/hachidaishu-bg-16-split.idf \\n | ./emit -T js -c config/emit-config.json \\n > templates/emit-data.js

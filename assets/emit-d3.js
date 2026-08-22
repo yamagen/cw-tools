@@ -17,10 +17,65 @@
   }
 
   const tipElement = document.querySelector("#emit-tip, #tip");
+  const sourcePanel = document.getElementById("emit-source-panel");
+  const sourceTitle = document.getElementById("emit-source-title");
+  const sourceContent = document.getElementById("emit-source-content");
+  const sourceClose = document.getElementById("emit-source-close");
   const svg = d3.select(svgElement);
   const tip = tipElement ? d3.select(tipElement) : null;
   const nodes = data.nodes.map((node) => ({ ...node }));
   const links = data.links.map((link) => ({ ...link }));
+
+  const defaultViewConfig = {
+    source: {
+      path: "emit-texts.json",
+      title: "Source texts",
+      font_size: "1rem",
+    },
+  };
+
+  let viewConfig = defaultViewConfig;
+  let sourceTexts = null;
+  let sourceTextsError = null;
+
+  const viewConfigPromise = fetch("emit-d3.config.json")
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then((config) => {
+      viewConfig = {
+        ...defaultViewConfig,
+        ...config,
+        source: {
+          ...defaultViewConfig.source,
+          ...(config && typeof config.source === "object" ? config.source : {}),
+        },
+      };
+      if (sourceContent && viewConfig.source.font_size) {
+        sourceContent.style.fontSize = String(viewConfig.source.font_size);
+      }
+      return viewConfig;
+    })
+    .catch(() => {
+      if (sourceContent) sourceContent.style.fontSize = defaultViewConfig.source.font_size;
+      return viewConfig;
+    });
+
+  const sourceTextsPromise = viewConfigPromise
+    .then((config) => fetch(config.source.path))
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then((texts) => {
+      sourceTexts = texts;
+      return texts;
+    })
+    .catch((error) => {
+      sourceTextsError = error;
+      return null;
+    });
 
   const graphClasses = Array.isArray(data.classes) ? data.classes : ["graph"];
 
@@ -113,15 +168,120 @@
     if (tip) tip.style("display", "none");
   }
 
+  function clearSourceContent() {
+    if (!sourceContent) return;
+    while (sourceContent.firstChild) sourceContent.removeChild(sourceContent.firstChild);
+  }
+
+  function appendSourceRecord(unitId, record) {
+    const article = document.createElement("article");
+    article.className = "emit-source-record";
+
+    const heading = document.createElement("div");
+    heading.className = "emit-source-unit-id";
+    heading.textContent = unitId;
+    article.appendChild(heading);
+
+    if (record && typeof record === "object") {
+      for (const [name, value] of Object.entries(record)) {
+        const field = document.createElement("div");
+        field.className = `emit-source-field emit-source-field-${name}`;
+
+        if (name !== "surface") {
+          const label = document.createElement("span");
+          label.className = "emit-source-field-name";
+          label.textContent = `${name}: `;
+          field.appendChild(label);
+        }
+
+        const text = document.createElement("span");
+        text.className = "emit-source-field-value";
+        text.textContent = value == null ? "" : String(value);
+        field.appendChild(text);
+        article.appendChild(field);
+      }
+    } else {
+      const missing = document.createElement("div");
+      missing.className = "emit-source-missing";
+      missing.textContent = "Source text unavailable";
+      article.appendChild(missing);
+    }
+
+    sourceContent.appendChild(article);
+  }
+
+  async function showSources(unitIds, title = null) {
+    if (!sourcePanel || !sourceContent) return;
+
+    await viewConfigPromise;
+    const ids = [...new Set(Array.isArray(unitIds) ? unitIds : [])];
+    clearSourceContent();
+    sourcePanel.hidden = false;
+    const baseTitle = title || viewConfig.source.title || "Source texts";
+    if (sourceTitle) sourceTitle.textContent = `${baseTitle} (${ids.length})`;
+
+    if (!sourceTexts && !sourceTextsError) await sourceTextsPromise;
+
+    if (sourceTextsError) {
+      const error = document.createElement("div");
+      error.className = "emit-source-error";
+      error.textContent = `${viewConfig.source.path} could not be loaded: ${sourceTextsError.message}`;
+      sourceContent.appendChild(error);
+      return;
+    }
+
+    for (const unitId of ids) appendSourceRecord(unitId, sourceTexts?.[unitId]);
+  }
+
+  function visibleUnitIdsForNode(node) {
+    const ids = new Set();
+
+    for (const link of links) {
+      const sourceId = endpointId(link.source);
+      const targetId = endpointId(link.target);
+      if (sourceId !== node.id && targetId !== node.id) continue;
+
+      const element = document.getElementById(link.element_id);
+      if (element && element.classList.contains("is-hidden")) continue;
+
+      if (Array.isArray(link.unit_ids)) {
+        for (const unitId of link.unit_ids) ids.add(unitId);
+      }
+    }
+
+    return [...ids];
+  }
+
+  if (sourceClose && sourcePanel) {
+    sourceClose.addEventListener("click", () => {
+      sourcePanel.hidden = true;
+    });
+  }
+
   nodeGroups
     .on("mouseenter", (event, node) => showTip(event, `label: ${node.label}\nid: ${node.id}\ndf: ${node.df}\nidf: ${node.idf}` + `\nfq: ${node.fq ?? "NA"}\ndegree: ${node.degree}`))
     .on("mousemove", moveTip)
-    .on("mouseleave", hideTip);
+    .on("mouseleave", hideTip)
+    .on("click", (event, node) => {
+      const unitIds = visibleUnitIdsForNode(node);
+      if (unitIds.length === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      hideTip();
+      showSources(unitIds, `${viewConfig.source.title || "Source texts"} — ${node.label}`);
+    });
 
   edgeGroups
     .on("mouseenter", (event, link) => showTip(event, `source: ${endpointId(link.source)}\ntarget: ${endpointId(link.target)}` + `\nctf: ${link.ctf}\ncdf: ${link.cdf}\ncw: ${link.cw}\nz: ${link.z}` + `\nunit_ids: ${link.unit_ids.join(", ")}`))
     .on("mousemove", moveTip)
-    .on("mouseleave", hideTip);
+    .on("mouseleave", hideTip)
+    .on("click", (event, link) => {
+      if (!Array.isArray(link.unit_ids) || link.unit_ids.length === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      hideTip();
+      showSources(link.unit_ids);
+    });
 
   function ticked() {
     edgeHit
@@ -143,7 +303,6 @@
 
   const simulation = d3
     .forceSimulation(nodes)
-
     .force(
       "link",
       d3
@@ -159,27 +318,9 @@
           return 10;
         }),
     )
-
-    //    .force("charge", d3.forceManyBody().strength(-50))
     .force("charge", d3.forceManyBody().strength(-50))
-    //    .force(
-    //      "charge",
-    //      d3.forceManyBody().strength((node) => {
-    //        const degree = Number(node.degree ?? 0);
-    //
-    //        if (degree >= 12) return -100;
-    //        if (degree >= 6) return -40;
-    //        return -25;
-    //      }),
-    //    )
-    //    .force("center", d3.forceCenter(width() / 2, height() / 2))
     .force("x", d3.forceX(width() / 1.4).strength(0.02))
     .force("y", d3.forceY(height() / 2).strength(0.04))
-
-    //    .force(
-    //      "collision",
-    //      d3.forceCollide().radius((node) => Math.max(14, node.font_size * 0.9)),
-    //    )
     .on("tick", ticked)
     .on("end", () => {
       for (const node of nodes) {
@@ -209,15 +350,11 @@
       node.fx = null;
       node.fy = null;
     });
-
     simulation.alpha(1).restart();
   }
 
   const reheatButton = document.getElementById("emit-reheat");
-
-  if (reheatButton) {
-    reheatButton.addEventListener("click", releaseNodes);
-  }
+  if (reheatButton) reheatButton.addEventListener("click", releaseNodes);
 
   function dragEnded(event, node) {
     node.x = event.x;
@@ -239,5 +376,7 @@
     edgeGroups,
     nodeGroups,
     simulation,
+    showSources,
+    visibleUnitIdsForNode,
   });
 })();
