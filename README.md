@@ -1,6 +1,6 @@
 # cw-tools: Transparent Unix Filters for Exploratory Text Analysis
 
-Last updated: 2026/08/21.
+Last updated: 2026/08/22.
 
 <p align="center">
   <img src="docs/images/cw-tools-social-preview.png"
@@ -62,7 +62,7 @@ inspected directly with `head`, `grep`, `awk`, `sort`, or `lv`.
 | `pair` | implemented | generate token pairs and preserve per-unit token frequency |
 | `cw` | implemented | project patterns, calculate global/local statistics, CW, and Z |
 | `emit` | implemented | serialize graphs, JavaScript data, and publication tables |
-| `cm` | design stage | connect adjacent two-token relations into chains |
+| `cm` | experimental | connect adjacent two-token relations into chains |
 
 Record the version of every program used in an analysis. Method numbers and
 command-line options should also be written explicitly even when a default
@@ -278,25 +278,18 @@ historical Level 18  ->  cw -p 5 --substr 18
 classification codes such as BG codes. If it is applied to UTF-8 Japanese
 text, byte length is not the same as character length.
 
-### `-k` searches the projected pattern
+### Exact key: `-k` / `--exact-key`
 
-The key selected by `-k` is matched against the computational pattern, not
-against the visible surface label.
+`-k` searches the projected computational pattern.
 
-Therefore, with:
+With:
 
 ```sh
 ./cw -p 5 --substr 16
 ```
 
-a human-readable key such as:
-
-```sh
--k 'うめ'
-```
-
-will not match, because the pattern is now a BG-code prefix. Use the projected
-BG-code pattern instead, for example:
+a human-readable key such as `梅` is not the computational identity. An exact
+key therefore uses the projected BG-code pattern, for example:
 
 ```sh
 -k 'BG-01-5520-20-04'
@@ -305,6 +298,30 @@ BG-code pattern instead, for example:
 This behavior makes the analytical identity explicit: the same pattern used
 for hashing, DF/IDF, pair identity, and CW selection is also the pattern used
 by `-k`.
+
+### Free key: `-f` / `--free-key`
+
+`-f` searches the **complete original token** rather than the projected
+computational pattern. Matching complete tokens are resolved to the current
+projected pattern, and the corresponding units are selected.
+
+For example:
+
+```sh
+./cw -p 5 --substr 16 -f '梅'
+```
+
+lets the researcher select a readable form such as `梅` while computation
+continues to use the Level-16 BG-code identity.
+
+Thus the two key modes have different roles:
+
+```text
+-k / --exact-key   search the projected computational pattern
+-f / --free-key    search complete tokens, then resolve to projected patterns
+```
+
+The two modes are mutually exclusive.
 
 ### External IDF: `--idf-out` and `--idf-in`
 
@@ -324,30 +341,15 @@ cat tests/data/hachidaishu-bg.txt \
 Level-16 BG-code IDF:
 
 ```sh
-cat tests/data/hachidaishu-bg.txt \
+cat tests/data/hachidaishu-bg-split.txt \
   | ./pair \
   | ./cw -p 5 --substr 16 --idf-out \
-  > tests/data/hachidaishu-bg-16.idf
+  > tests/data/hachidaishu-bg-split-16.idf
 ```
 
-Level-18 BG-code IDF:
-
-```sh
-cat tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | ./cw -p 5 --substr 18 --idf-out \
-  > tests/data/hachidaishu-bg-18.idf
-```
-
-A Level-16 calculation must therefore use the Level-16 IDF file:
-
-```sh
-./cw -p 5 --substr 16 \
-  --idf-in tests/data/hachidaishu-bg-16.idf
-```
-
-If the pattern definition does not match, `cw` reports a missing-IDF error
-instead of silently mixing incompatible statistics.
+A Level-16 calculation must use a Level-16 IDF generated with the same pattern
+projection. If the pattern definition does not match, `cw` reports a
+missing-IDF error instead of silently mixing incompatible statistics.
 
 ### CW methods
 
@@ -366,7 +368,7 @@ Specify the method explicitly:
 ./cw -M 1
 ./cw -M 7 -k REGEX
 ./cw -M 12 -k REGEX
-./cw -M 16 -k REGEX
+./cw -M 16 -f REGEX
 ```
 
 Method 16 is:
@@ -439,28 +441,28 @@ Method      -> cw -M 7 / 12 / 16
 This separation keeps corpus-specific segmentation logic out of `pair` and
 `cw`.
 
-### Example: Kokinshu, Level 16, Method 16
+### Example: Kokinshu, Level 16, Method 16, key `梅`
 
-First generate the Hachidaishu-wide Level-16 IDF:
+First generate the Hachidaishu-wide Level-16 IDF from the split view:
 
 ```sh
-cat tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | ./cw -p 5 --substr 16 --idf-out \
-  > tests/data/hachidaishu-bg-16.idf
+cat tests/data/hachidaishu-bg-split.txt |
+  ./pair |
+  ./cw -p 5 --substr 16 --idf-out \
+  > tests/data/hachidaishu-bg-split-16.idf
 ```
 
 Then select Kokinshu (`grep '^1'`), use Level 16 and Method 16, and select the
-BG-code pattern corresponding to the target semantic class:
+readable key `梅` with `-f`:
 
 ```sh
-grep '^1' tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | ./cw -p 5 --substr 16 -M 16 \
-      -k 'BG-01-5520-20-04' \
-      --idf-in tests/data/hachidaishu-bg-16.idf \
-  | ./emit -T js -c config/emit-config.json \
-  > templates/emit-data.js
+grep '^1' tests/data/hachidaishu-bg-split.txt |
+  ./pair |
+  ./cw -p 5 --substr 16 \
+       --idf-in tests/data/hachidaishu-bg-split-16.idf \
+       -M 16 -f '梅' |
+  ./emit -T js -c config/emit-config.json \
+  > examples/kokin/emit-data.js
 ```
 
 The roles of the stages are explicit:
@@ -470,27 +472,10 @@ grep '^1'                 observation corpus: Kokinshu
 pair                       observed token relations
 -p 5                       identity: BG code
 --substr 16                semantic level
--M 16                      CW method
--k BG-...                  selected projected pattern
 --idf-in ...-16.idf        Hachidaishu-wide Level-16 IDF
+-M 16                      CW method
+-f '梅'                    readable free-key selection
 emit -T js                 browser visualization data
-```
-
-Because this is a Unix pipeline, every stage can be checked independently:
-
-```sh
-grep '^1' tests/data/hachidaishu-bg.txt | head
-
-grep '^1' tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | head
-
-grep '^1' tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | ./cw -p 5 --substr 16 -M 16 \
-      -k 'BG-01-5520-20-04' \
-      --idf-in tests/data/hachidaishu-bg-16.idf \
-  | lv
 ```
 
 The final visualization is therefore not a black-box result. The researcher
@@ -539,7 +524,7 @@ Examples:
 
 ```sh
 ./emit -T dot -c config/emit-config.json result.tsv > result.dot
-./emit -T js  -c config/emit-config.json result.tsv > templates/emit-data.js
+./emit -T js  -c config/emit-config.json result.tsv > emit-data.js
 ./emit -T tex -c config/emit-table.config result.tsv > result.tex
 ```
 
@@ -550,40 +535,100 @@ while the graph displays a readable representative form such as `梅`, `花`, or
 
 ### Interactive D3 output
 
-The reusable browser renderer separates data, layout, appearance, and
-interaction:
+The reusable browser renderer separates graph data, source text, appearance,
+configuration, and interaction:
 
 ```text
-emit-data.js          graph-specific data generated by emit
-emit-d3.js            reusable renderer
-emit-d3.css           appearance rules
-emit-slider.js        Z-threshold visibility control
-d3.v7.min.js          layout and visualization library
+emit-data.js             graph-specific data generated by emit
+emit-texts.json          source texts indexed by unit_id
+emit-d3.config.json      browser-side source-display configuration
+emit-d3.js               reusable renderer
+emit-d3.css              appearance rules
+emit-slider.js           Z-threshold visibility control
 ```
 
-Generate browser data with:
+The interactive viewer supports:
 
-```sh
-./emit -T js -c config/emit-config.json result.tsv \
-  > templates/emit-data.js
-```
+- Z-threshold filtering with the slider;
+- edge click -> source texts for the edge's `unit_ids`;
+- node click -> source texts collected from the node's currently visible edges;
+- multiple source-text candidates when a relation occurs in multiple units.
 
-Then open:
+The graph and source text remain separate. `emit` writes graph data and
+`unit_ids`; the browser uses those identifiers to look up corresponding source
+texts in `emit-texts.json`. Thus `emit` itself remains a formatter.
 
-```sh
-firefox templates/emit-d3.html
+Browser-side source display can be configured in `emit-d3.config.json`, for
+example:
+
+```json
+{
+  "source": {
+    "path": "emit-texts.json",
+    "title": "Source texts",
+    "font_size": "2.4rem"
+  }
+}
 ```
 
 The slider changes visibility only. It does not recalculate CW, Z, ranks, the
 distribution, or graph geometry.
 
-See [`docs/emit-d3.md`](docs/emit-d3.md) and
-[`docs/man-emit.md`](docs/man-emit.md).
+## Self-contained Kokinshu browser example
+
+`examples/kokin/` is a self-contained browser example. The directory contains
+the HTML page, graph data, source texts, browser configuration, and the assets
+needed for the interactive viewer.
+
+Run a local server from the repository root:
+
+```sh
+python -m http.server
+```
+
+Then open:
+
+```text
+http://localhost:8000/examples/kokin/
+```
+
+The same directory layout can be served directly as static files, including
+from GitHub Pages.
+
+The reusable development versions remain under `templates/` and `assets/`;
+the example directory contains the copies needed to run by itself.
+
+## Examples and reproducible shell scripts
+
+The repository deliberately keeps several kinds of examples:
+
+```text
+examples/kokin/          self-contained interactive browser example
+examples/bochan/         Japanese text-processing example
+examples/tom-sawyer/     English text-processing example
+examples/shellscript/    executable command-line workflow examples
+templates/               reusable D3 viewer template and generated-data slots
+tests/tools/             corpus conversion utilities
+tests/data/              source and derived test/example data
+```
+
+Shell scripts are useful when an analysis needs many options. They are also a
+compact record of the exact procedure used to generate a figure or browser
+dataset. A script may copy itself beside the generated result so that the
+result keeps a snapshot of its own generation procedure.
+
+For example:
+
+```sh
+cp "$0" ume.command
+```
+
+can preserve the exact script that generated `ume.svg`.
 
 ## `cm`: chains from adjacency
 
-`cm` is reserved for chain construction from directed adjacent relations.
-Adjacency itself remains a two-token observation.
+`cm` connects directed adjacent relations through shared endpoints. Adjacency
+itself remains a two-token observation.
 
 For:
 
@@ -606,8 +651,8 @@ A-B + B-C + C-D  ->  A-B-C-D
 ```
 
 The longer chain is derived from adjacent pairs; it is not treated as a
-three-word or four-word adjacency observation. The interface is still under
-development.
+three-word or four-word adjacency observation. The interface remains
+experimental.
 
 ## Distribution analysis with `rbin`
 
@@ -629,28 +674,30 @@ A reproducible analysis should preserve at least:
 1. the input dataset and unit definition;
 2. the tokenization/segmentation policy;
 3. the token field specification;
-4. the versions of `pair`, `cw`, and `emit`;
+4. the versions of `pair`, `cw`, `cm`, and `emit` used;
 5. the `pair` mode and ordering;
-6. the `cw -p`, `--substr`, `-k`, `-M`, `--idf-in`, and `--idf-out` options;
+6. the `cw -p`, `--substr`, `-k` or `-f`, `-M`, `--idf-in`, and `--idf-out` options;
 7. the unfiltered `cw` TSV output;
 8. every `grep`, `awk`, `sort`, or shell-script condition;
 9. the `emit` configuration;
-10. the final visualization or table.
+10. the browser-side D3 configuration when applicable;
+11. the final visualization or table;
+12. preferably, the command script that generated the result.
 
 The command line itself is a compact research record. For example:
 
 ```sh
-grep '^1' tests/data/hachidaishu-bg.txt \
-  | ./pair \
-  | ./cw -p 5 --substr 16 -M 16 \
-      -k 'BG-01-5520-20-04' \
-      --idf-in tests/data/hachidaishu-bg-16.idf \
-  | ./emit -T js -c config/emit-config.json \
-  > templates/emit-data.js
+grep '^1' tests/data/hachidaishu-bg-split.txt |
+  ./pair |
+  ./cw -p 5 --substr 16 \
+       --idf-in tests/data/hachidaishu-bg-split-16.idf \
+       -M 16 -f '梅' |
+  ./emit -T js -c config/emit-config.json \
+  > examples/kokin/emit-data.js
 ```
 
 This records the corpus subset, token relation generator, semantic level,
-statistical method, key pattern, IDF reference, and output format in one
+statistical method, readable key, IDF reference, and output format in one
 inspectable pipeline.
 
 ## Build and install
@@ -723,8 +770,8 @@ fields are optional.
 
 For a reproducible citation, record the released version or commit identifier,
 the versions of the individual programs, the input/segmentation view, the
-pattern fields and substring level, the IDF reference, and the selected CW
-method.
+pattern fields and substring level, the IDF reference, the selected key mode,
+and the selected CW method.
 
 ## License
 
