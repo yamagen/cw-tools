@@ -246,7 +246,7 @@ svg.graph {
 }
 
 .emit-source-field-surface {
-  font-size: 1rem;
+  font-size: inherit;
 }
 
 .emit-source-field-name {
