@@ -300,14 +300,77 @@ static bool record_variant(struct node *term, const char *token,
   return false;
 }
 
+static uint32_t utf8_codepoint(const unsigned char **cursor,
+                               const unsigned char *end) {
+  const unsigned char *p = *cursor;
+  uint32_t cp;
+
+  if (p >= end)
+    return 0;
+
+  if (*p < 0x80) {
+    cp = *p++;
+  } else if ((*p & 0xe0) == 0xc0 && p + 1 < end &&
+             (p[1] & 0xc0) == 0x80) {
+    cp = ((uint32_t)(p[0] & 0x1f) << 6) | (uint32_t)(p[1] & 0x3f);
+    p += 2;
+  } else if ((*p & 0xf0) == 0xe0 && p + 2 < end &&
+             (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80) {
+    cp = ((uint32_t)(p[0] & 0x0f) << 12) |
+         ((uint32_t)(p[1] & 0x3f) << 6) | (uint32_t)(p[2] & 0x3f);
+    p += 3;
+  } else if ((*p & 0xf8) == 0xf0 && p + 3 < end &&
+             (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80 &&
+             (p[3] & 0xc0) == 0x80) {
+    cp = ((uint32_t)(p[0] & 0x07) << 18) |
+         ((uint32_t)(p[1] & 0x3f) << 12) |
+         ((uint32_t)(p[2] & 0x3f) << 6) | (uint32_t)(p[3] & 0x3f);
+    p += 4;
+  } else {
+    cp = *p++;
+  }
+
+  *cursor = p;
+  return cp;
+}
+
+static bool token_lemma_has_kanji(const char *token) {
+  CwtTokenFields fields;
+  cwt_token_parse(token, &fields);
+
+  if (fields.count < 2)
+    return false;
+
+  const unsigned char *p = (const unsigned char *)fields.field[1].ptr;
+  const unsigned char *end = p + fields.field[1].len;
+
+  while (p < end) {
+    uint32_t cp = utf8_codepoint(&p, end);
+    if ((cp >= 0x3400 && cp <= 0x4dbf) ||
+        (cp >= 0x4e00 && cp <= 0x9fff) ||
+        (cp >= 0xf900 && cp <= 0xfaff) ||
+        (cp >= 0x20000 && cp <= 0x2ffff))
+      return true;
+  }
+  return false;
+}
+
 static const char *representative_token(const struct node *term) {
   const struct variant *best = NULL;
+  bool best_has_kanji = false;
 
   for (const struct variant *variant = term->variants; variant != NULL;
        variant = variant->next) {
-    if (best == NULL || variant->df > best->df ||
-        (variant->df == best->df && strcmp(variant->token, best->token) < 0))
+    bool has_kanji = token_lemma_has_kanji(variant->token);
+
+    if (best == NULL ||
+        (has_kanji && !best_has_kanji) ||
+        (has_kanji == best_has_kanji && variant->df > best->df) ||
+        (has_kanji == best_has_kanji && variant->df == best->df &&
+         strcmp(variant->token, best->token) < 0)) {
       best = variant;
+      best_has_kanji = has_kanji;
+    }
   }
 
   return best != NULL ? best->token : term->key;
