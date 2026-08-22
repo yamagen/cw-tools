@@ -26,9 +26,44 @@
   const nodes = data.nodes.map((node) => ({ ...node }));
   const links = data.links.map((link) => ({ ...link }));
 
+  const defaultViewConfig = {
+    source: {
+      path: "emit-texts.json",
+      title: "Source texts",
+      font_size: "1rem",
+    },
+  };
+
+  let viewConfig = defaultViewConfig;
   let sourceTexts = null;
   let sourceTextsError = null;
-  const sourceTextsPromise = fetch("emit-texts.json")
+
+  const viewConfigPromise = fetch("emit-d3.config.json")
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then((config) => {
+      viewConfig = {
+        ...defaultViewConfig,
+        ...config,
+        source: {
+          ...defaultViewConfig.source,
+          ...(config && typeof config.source === "object" ? config.source : {}),
+        },
+      };
+      if (sourceContent && viewConfig.source.font_size) {
+        sourceContent.style.fontSize = String(viewConfig.source.font_size);
+      }
+      return viewConfig;
+    })
+    .catch(() => {
+      if (sourceContent) sourceContent.style.fontSize = defaultViewConfig.source.font_size;
+      return viewConfig;
+    });
+
+  const sourceTextsPromise = viewConfigPromise
+    .then((config) => fetch(config.source.path))
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
@@ -175,20 +210,22 @@
     sourceContent.appendChild(article);
   }
 
-  async function showSources(unitIds, title = "Source texts") {
+  async function showSources(unitIds, title = null) {
     if (!sourcePanel || !sourceContent) return;
 
+    await viewConfigPromise;
     const ids = [...new Set(Array.isArray(unitIds) ? unitIds : [])];
     clearSourceContent();
     sourcePanel.hidden = false;
-    if (sourceTitle) sourceTitle.textContent = `${title} (${ids.length})`;
+    const baseTitle = title || viewConfig.source.title || "Source texts";
+    if (sourceTitle) sourceTitle.textContent = `${baseTitle} (${ids.length})`;
 
     if (!sourceTexts && !sourceTextsError) await sourceTextsPromise;
 
     if (sourceTextsError) {
       const error = document.createElement("div");
       error.className = "emit-source-error";
-      error.textContent = `emit-texts.json could not be loaded: ${sourceTextsError.message}`;
+      error.textContent = `${viewConfig.source.path} could not be loaded: ${sourceTextsError.message}`;
       sourceContent.appendChild(error);
       return;
     }
@@ -231,7 +268,7 @@
       event.preventDefault();
       event.stopPropagation();
       hideTip();
-      showSources(unitIds, `Source texts — ${node.label}`);
+      showSources(unitIds, `${viewConfig.source.title || "Source texts"} — ${node.label}`);
     });
 
   edgeGroups
