@@ -10,8 +10,9 @@
 #     "10002": {"surface": "..."}
 #   }
 #
-# The original surface is reconstructed from A00 records only.  POS 77
-# annotation/symbol records are ignored, matching the cw-data generators.
+# The source surface is reconstructed from the non-split records used by
+# db2cw.awk: A00 for ordinary tokens and B00 for unsplit compound tokens.
+# C/D/E child records and POS 77 annotation/symbol records are ignored.
 
 function clean_surface(s) {
     gsub(/[〈〉]/, "", s)
@@ -47,7 +48,7 @@ BEGIN {
 }
 
 $1 ~ /^Not/ { next }
-$2 != "A00" { next }
+$2 != "A00" && $2 != "B00" { next }
 $4 == "77" { next }
 
 {
