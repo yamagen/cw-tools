@@ -175,13 +175,13 @@
     sourceContent.appendChild(article);
   }
 
-  async function showSources(unitIds) {
+  async function showSources(unitIds, title = "Source texts") {
     if (!sourcePanel || !sourceContent) return;
 
     const ids = [...new Set(Array.isArray(unitIds) ? unitIds : [])];
     clearSourceContent();
     sourcePanel.hidden = false;
-    if (sourceTitle) sourceTitle.textContent = `Source texts (${ids.length})`;
+    if (sourceTitle) sourceTitle.textContent = `${title} (${ids.length})`;
 
     if (!sourceTexts && !sourceTextsError) await sourceTextsPromise;
 
@@ -196,6 +196,25 @@
     for (const unitId of ids) appendSourceRecord(unitId, sourceTexts?.[unitId]);
   }
 
+  function visibleUnitIdsForNode(node) {
+    const ids = new Set();
+
+    for (const link of links) {
+      const sourceId = endpointId(link.source);
+      const targetId = endpointId(link.target);
+      if (sourceId !== node.id && targetId !== node.id) continue;
+
+      const element = document.getElementById(link.element_id);
+      if (element && element.classList.contains("is-hidden")) continue;
+
+      if (Array.isArray(link.unit_ids)) {
+        for (const unitId of link.unit_ids) ids.add(unitId);
+      }
+    }
+
+    return [...ids];
+  }
+
   if (sourceClose && sourcePanel) {
     sourceClose.addEventListener("click", () => {
       sourcePanel.hidden = true;
@@ -205,7 +224,15 @@
   nodeGroups
     .on("mouseenter", (event, node) => showTip(event, `label: ${node.label}\nid: ${node.id}\ndf: ${node.df}\nidf: ${node.idf}` + `\nfq: ${node.fq ?? "NA"}\ndegree: ${node.degree}`))
     .on("mousemove", moveTip)
-    .on("mouseleave", hideTip);
+    .on("mouseleave", hideTip)
+    .on("click", (event, node) => {
+      const unitIds = visibleUnitIdsForNode(node);
+      if (unitIds.length === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      hideTip();
+      showSources(unitIds, `Source texts — ${node.label}`);
+    });
 
   edgeGroups
     .on("mouseenter", (event, link) => showTip(event, `source: ${endpointId(link.source)}\ntarget: ${endpointId(link.target)}` + `\nctf: ${link.ctf}\ncdf: ${link.cdf}\ncw: ${link.cw}\nz: ${link.z}` + `\nunit_ids: ${link.unit_ids.join(", ")}`))
@@ -313,5 +340,6 @@
     nodeGroups,
     simulation,
     showSources,
+    visibleUnitIdsForNode,
   });
 })();
