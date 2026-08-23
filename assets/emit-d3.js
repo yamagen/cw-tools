@@ -214,7 +214,8 @@
     if (!sourcePanel || !sourceContent) return;
 
     await viewConfigPromise;
-    const ids = [...new Set(Array.isArray(unitIds) ? unitIds : [])];
+    const ids = [...new Set(Array.isArray(unitIds) ? unitIds : [])].sort((a, b) => Number(a) - Number(b));
+
     clearSourceContent();
     sourcePanel.hidden = false;
     const baseTitle = title || viewConfig.source.title || "Source texts";
