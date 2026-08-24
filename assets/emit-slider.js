@@ -26,10 +26,15 @@
 
   const zValues = data.links.map((link) => Number(link.z)).filter((value) => Number.isFinite(value));
 
+  function formatCount(visible, total, label) {
+    const percent = total > 0 ? (visible / total) * 100 : 0;
+    return `${visible} / ${total} ${label} (${percent.toFixed(1)}%)`;
+  }
+
   if (zValues.length === 0) {
     slider.disabled = true;
     valueOutput.textContent = "no Z data";
-    countOutput.textContent = "0 edges / 0 nodes";
+    countOutput.textContent = `${formatCount(0, data.links.length, "edges")} · ${formatCount(0, data.nodes.length, "nodes")}`;
     return;
   }
 
@@ -285,7 +290,7 @@
     }
 
     valueOutput.textContent = `Z ≥ ${formatNumber(threshold)}`;
-    countOutput.textContent = `${visibleEdges} / ${data.links.length} edges · ` + `${visibleNodes} / ${data.nodes.length} nodes`;
+    countOutput.textContent = `${formatCount(visibleEdges, data.links.length, "edges")} · ${formatCount(visibleNodes, data.nodes.length, "nodes")}`;
     distributionView.update(threshold);
 
     const detail = {
