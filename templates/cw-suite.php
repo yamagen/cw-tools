@@ -110,12 +110,14 @@ fclose($pipes[2]);
 $status = proc_close($process);
 
 if ($status !== 0 || $stdout === false) {
-    $message = trim($stderr === false ? '' : $stderr);
-    fail_request(500, $message !== '' ? $message : 'cw-tools pipeline failed');
+    if (is_string($stderr) && trim($stderr) !== '') {
+        error_log('cw-suite pipeline: ' . trim($stderr));
+    }
+    fail_request(500, 'cw-tools pipeline failed');
 }
 
 if (!preg_match('/\A"use strict";\s*globalThis\.emitData=(.*);\s*\z/s', $stdout, $matches)) {
-    fail_request(500, 'unexpected emit -T js output');
+    fail_request(500, 'unexpected emit output');
 }
 
 $graph = json_decode($matches[1], true);
