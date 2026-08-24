@@ -21,15 +21,17 @@ emit-data.js               generated for one graph by emit -T js
 assets/emit-d3.js          reusable cw-tools renderer
 assets/emit-slider.js      reusable Z-threshold visibility controller
 assets/emit-interaction.js reusable browser interaction controller
+assets/emit-retention.js   reusable edge/node retention curve panel
 assets/emit-d3.css         reusable appearance rules
+assets/emit-retention.css  retention panel appearance rules
 templates/emit-d3.html     assembly template
 d3.v7.min.js               external D3 library
 ```
 
-`emit-data.js`, `emit-d3.js`, `emit-slider.js`, `emit-interaction.js`, and
-`emit-d3.css` are cw-tools files. D3 itself is an external library. The template
-currently loads the pinned D3 7.9.0 browser bundle from jsDelivr. It may instead
-point to a locally downloaded copy named, for example, `d3.v7.min.js`.
+The `emit-*` files listed above are cw-tools files. D3 itself is an external
+library. The template currently loads the pinned D3 7.9.0 browser bundle from
+jsDelivr. It may instead point to a locally downloaded copy named, for example,
+`d3.v7.min.js`.
 
 ## Generate emit-data.js
 
@@ -111,11 +113,15 @@ firefox templates/emit-d3.html
 The template loads files in this order:
 
 ```html
+<link rel="stylesheet" href="../assets/emit-d3.css" />
+<link rel="stylesheet" href="../assets/emit-retention.css" />
+
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="emit-data.js"></script>
 <script src="../assets/emit-d3.js"></script>
 <script src="../assets/emit-interaction.js"></script>
 <script src="../assets/emit-slider.js"></script>
+<script src="../assets/emit-retention.js"></script>
 ```
 
 The dependency chain is:
@@ -127,6 +133,7 @@ D3 library + emit-data.js
 emit-data.js + fixed SVG
           -> emit-interaction.js
           -> emit-slider.js
+          -> emit-retention.js
 ```
 
 `emit-d3.js` creates the SVG elements, copies `element_id` and `classes` from
@@ -181,6 +188,28 @@ globalThis.emitSlider.reset()
 `emit-slider.js` does not call D3. It depends on the SVG already created by
 `emit-d3.js` and uses browser DOM and SVG APIs only.
 
+### Retention panel
+
+The `Retention` button toggles a second panel beside the Z slider panel. The
+panel plots two curves over the Z threshold:
+
+```text
+edge retention = visible edges / all edges
+node retention = nodes incident to at least one visible edge / all nodes
+```
+
+`assets/emit-retention.js` builds these curves once from the supplied link Z
+values. It listens for `emit-z-change` and moves a current-threshold line and
+edge/node markers without changing the slider, graph, force layout, or source
+data. The current edge and node percentages are also shown in the retention
+panel header.
+
+The panel is intentionally separate from the PPD distribution histogram. The
+histogram shows the distribution of link Z values, whereas the retention panel
+shows how edge volume and node coverage respond as the threshold changes. This
+separation keeps the statistical distribution display and the network response
+display independent.
+
 ### Double-click pruning
 
 The external viewer also supports manual pruning in addition to Z-threshold
@@ -219,6 +248,10 @@ has-url
 is-hidden
 ```
 
+Retention-specific layout and curve styles are kept in
+`assets/emit-retention.css` so the optional panel remains a separate viewer
+component.
+
 An edge URL generated from `unit_ids` wraps the visible edge line, its wider
 transparent hit line, and its numeric label in one SVG anchor. The URL is
 resolved relative to the HTML page, not relative to `emit-data.js`.
@@ -252,6 +285,7 @@ node --check templates/emit-data.js
 node --check assets/emit-d3.js
 node --check assets/emit-interaction.js
 node --check assets/emit-slider.js
+node --check assets/emit-retention.js
 ```
 
 Run the supplied static checks:
@@ -269,5 +303,6 @@ firefox templates/emit-d3.html
 
 The default slider position is the minimum Z value, so all edges are initially
 visible. Move it to the right to retain progressively higher-Z edges while the
-node positions remain fixed. Double-click individual nodes when manual pruning
-is useful; reload the page to restore the unpruned viewer state.
+node positions remain fixed. Use `Retention` to compare edge volume and node
+coverage at the same thresholds. Double-click individual nodes when manual
+pruning is useful; reload the page to restore the unpruned viewer state.
