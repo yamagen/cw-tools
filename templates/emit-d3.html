@@ -21,10 +21,19 @@
           <button id="emit-reheat">Reheat</button>
           <button id="emit-z-reset">Reset</button>
           <button id="emit-command-toggle">Command</button>
+          <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
     </section>
+
+    <aside id="emit-retention-panel" hidden aria-label="Retention curves">
+      <div id="emit-retention-header">
+        <strong>Retention</strong>
+        <output id="emit-retention-value"></output>
+      </div>
+      <svg id="emit-retention-chart"></svg>
+    </aside>
 
     <aside id="emit-source-panel" hidden aria-label="Source texts">
       <header id="emit-source-header">
@@ -42,6 +51,7 @@
     <script src="../assets/emit-d3.js"></script>
     <script src="../assets/emit-interaction.js"></script>
     <script src="../assets/emit-slider.js"></script>
+    <script src="../assets/emit-retention.js"></script>
 
     <script>
       const commandPanel = document.getElementById("emit-command-panel");
