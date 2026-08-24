@@ -6,6 +6,7 @@
 #include "emit-types.h"
 
 void emit_d3_set_data_only(bool enabled);
+void emit_d3_set_raw_json(bool enabled);
 void emit_d3_write(FILE *stream, const EdgeVec *edges,
                    const NodeVec *nodes, const Config *config);
 
