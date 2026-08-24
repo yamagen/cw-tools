@@ -79,6 +79,12 @@
     return;
   }
 
+  const maxGapPoint = points.reduce((best, point) => {
+    const gap = point.nodePercent - point.edgePercent;
+    const bestGap = best.nodePercent - best.edgePercent;
+    return gap > bestGap ? point : best;
+  });
+
   const width = 400;
   const height = 400;
   const margin = { top: 34, right: 24, bottom: 34, left: 42 };
@@ -126,6 +132,16 @@
   svg.append(svgElement("path", { d: pathFor("edgePercent"), class: "emit-retention-edge-curve" }));
   svg.append(svgElement("path", { d: pathFor("nodePercent"), class: "emit-retention-node-curve" }));
 
+  const maxGapX = x(maxGapPoint.z);
+  const maxGapLine = svgElement("line", {
+    x1: maxGapX,
+    y1: margin.top,
+    x2: maxGapX,
+    y2: xAxisY,
+    class: "emit-retention-max-gap",
+  });
+  svg.append(maxGapLine);
+
   const currentLine = svgElement("line", {
     x1: x(zMin), y1: margin.top, x2: x(zMin), y2: xAxisY, class: "emit-retention-current",
   });
@@ -137,7 +153,9 @@
   edgeLegend.textContent = "edges";
   const nodeLegend = svgElement("text", { x: margin.left + 80, y: 16, class: "emit-retention-node-legend" });
   nodeLegend.textContent = "nodes";
-  svg.append(edgeLegend, nodeLegend);
+  const maxGapLegend = svgElement("text", { x: margin.left + 150, y: 16, class: "emit-retention-max-gap-legend" });
+  maxGapLegend.textContent = "max n-e gap";
+  svg.append(edgeLegend, nodeLegend, maxGapLegend);
 
   function pointForThreshold(threshold) {
     let chosen = points[0];
@@ -178,5 +196,5 @@
   globalThis.addEventListener("emit-z-change", (event) => update(event.detail));
   update();
 
-  globalThis.emitRetention = Object.freeze({ panel, svg, points, update });
+  globalThis.emitRetention = Object.freeze({ panel, svg, points, maxGapPoint, update });
 })();
