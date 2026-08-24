@@ -1,0 +1,138 @@
+/* cw-tools retention panel */
+
+#emit-retention-toggle {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid #999;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+#emit-retention-toggle:hover,
+#emit-retention-toggle[aria-pressed="true"] {
+  background: #f2f2f2;
+}
+
+#emit-button-row {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+#emit-retention-panel {
+  position: absolute;
+  top: 0.75rem;
+  left: calc(0.75rem + min(21rem, calc(100vw - 1.5rem)) + 0.75rem);
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(21rem, calc(100vw - 1.5rem));
+  padding: 0.75rem 0.85rem 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(3px);
+}
+
+#emit-retention-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+#emit-retention-header strong {
+  font-size: 1.05rem;
+}
+
+#emit-retention-value {
+  color: #555;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#emit-retention-chart {
+  display: block;
+  width: 20rem;
+  height: 20rem;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.emit-retention-axis {
+  stroke: #555;
+  stroke-width: 1;
+}
+
+.emit-retention-grid {
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 1;
+}
+
+.emit-retention-label {
+  fill: #555;
+  font-size: 11px;
+}
+
+.emit-retention-edge-curve,
+.emit-retention-node-curve {
+  fill: none;
+  stroke-width: 2;
+}
+
+.emit-retention-edge-curve {
+  stroke: #286fb4;
+}
+
+.emit-retention-node-curve {
+  stroke: #a34a28;
+  stroke-dasharray: 5 3;
+}
+
+.emit-retention-current {
+  stroke: #111;
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.emit-retention-edge-dot {
+  fill: #286fb4;
+}
+
+.emit-retention-node-dot {
+  fill: #a34a28;
+}
+
+.emit-retention-edge-legend,
+.emit-retention-node-legend {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.emit-retention-edge-legend {
+  fill: #286fb4;
+}
+
+.emit-retention-node-legend {
+  fill: #a34a28;
+}
+
+@media (max-width: 46rem) {
+  #emit-button-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #emit-retention-panel {
+    top: auto;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    width: calc(100vw - 0.8rem);
+  }
+
+  #emit-retention-chart {
+    height: 10rem;
+  }
+}
