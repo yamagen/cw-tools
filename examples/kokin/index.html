@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>cw-tools graph</title>
     <link rel="stylesheet" href="assets/emit-d3.css" />
+    <link rel="stylesheet" href="assets/emit-retention.css" />
   </head>
   <body>
     <section id="emit-controls" aria-label="Z threshold controls">
@@ -21,6 +22,7 @@
           <button id="emit-reheat">Reheat</button>
           <button id="emit-z-reset">Reset</button>
           <button id="emit-command-toggle">Command</button>
+          <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
@@ -34,6 +36,14 @@
       <div id="emit-source-content"></div>
     </aside>
 
+    <aside id="emit-retention-panel" hidden aria-label="Retention curves">
+      <div id="emit-retention-header">
+        <strong>Retention</strong>
+        <output id="emit-retention-value"></output>
+      </div>
+      <svg id="emit-retention-chart"></svg>
+    </aside>
+
     <svg id="emit-graph" aria-label="interactive network graph"></svg>
     <div id="emit-tip"></div>
 
@@ -41,6 +51,7 @@
     <script src="emit-data.js"></script>
     <script src="assets/emit-d3.js"></script>
     <script src="assets/emit-slider.js"></script>
+    <script src="assets/emit-retention.js"></script>
 
     <script>
       const commandPanel = document.getElementById("emit-command-panel");
