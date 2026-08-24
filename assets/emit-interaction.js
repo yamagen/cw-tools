@@ -40,19 +40,23 @@
     }
   }
 
-  svgElement.addEventListener("dblclick", (event) => {
-    const nodeElement = event.target.closest(".node[data-node-id]");
-    if (!nodeElement) return;
+  svgElement.addEventListener(
+    "dblclick",
+    (event) => {
+      const nodeElement = event.target.closest(".node[data-node-id]");
+      if (!nodeElement) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
 
-    const nodeId = nodeElement.getAttribute("data-node-id");
-    makeNodeAndEdgesTransparent(nodeId);
+      const nodeId = nodeElement.getAttribute("data-node-id");
+      makeNodeAndEdgesTransparent(nodeId);
 
-    const sourcePanel = document.getElementById("emit-source-panel");
-    if (sourcePanel) sourcePanel.hidden = true;
-  });
+      const sourcePanel = document.getElementById("emit-source-panel");
+      if (sourcePanel) sourcePanel.hidden = true;
+    },
+    true,
+  );
 
   globalThis.emitInteraction = Object.freeze({
     makeNodeAndEdgesTransparent,
