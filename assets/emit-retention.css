@@ -98,6 +98,13 @@
   pointer-events: none;
 }
 
+.emit-retention-max-gap {
+  stroke: #0b5d1e;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+
 .emit-retention-edge-dot {
   fill: #286fb4;
 }
@@ -107,7 +114,8 @@
 }
 
 .emit-retention-edge-legend,
-.emit-retention-node-legend {
+.emit-retention-node-legend,
+.emit-retention-max-gap-legend {
   font-size: 12px;
   font-weight: 600;
 }
@@ -118,6 +126,10 @@
 
 .emit-retention-node-legend {
   fill: #a34a28;
+}
+
+.emit-retention-max-gap-legend {
+  fill: #0b5d1e;
 }
 
 @media (max-width: 46rem) {
