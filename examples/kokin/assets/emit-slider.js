@@ -26,10 +26,25 @@
 
   const zValues = data.links.map((link) => Number(link.z)).filter((value) => Number.isFinite(value));
 
+  function formatCount(visible, total, label) {
+    const percent = total > 0 ? (visible / total) * 100 : 0;
+    return `${visible} / ${total} ${label} (${percent.toFixed(1)}%)`;
+  }
+
+  function setCountOutput(visibleEdges, visibleNodes) {
+    const edgeLine = document.createElement("span");
+    edgeLine.textContent = formatCount(visibleEdges, data.links.length, "edges");
+
+    const nodeLine = document.createElement("span");
+    nodeLine.textContent = formatCount(visibleNodes, data.nodes.length, "nodes");
+
+    countOutput.replaceChildren(edgeLine, nodeLine);
+  }
+
   if (zValues.length === 0) {
     slider.disabled = true;
     valueOutput.textContent = "no Z data";
-    countOutput.textContent = "0 edges / 0 nodes";
+    setCountOutput(0, 0);
     return;
   }
 
@@ -121,7 +136,6 @@
     const domainPadding = minimum === maximum ? Math.max(0.5, Math.abs(minimum) * 0.05) : 0;
     const domainMin = minimum - domainPadding;
     const domainMax = maximum + domainPadding;
-    //    const binCount = Math.max(16, Math.min(60, Math.round(Math.sqrt(values.length) * 2)));
     const binCount = getBinCount(values, minimum, maximum);
     const binWidth = (domainMax - domainMin) / binCount;
     const bins = Array.from({ length: binCount }, () => 0);
@@ -285,7 +299,7 @@
     }
 
     valueOutput.textContent = `Z ≥ ${formatNumber(threshold)}`;
-    countOutput.textContent = `${visibleEdges} / ${data.links.length} edges · ` + `${visibleNodes} / ${data.nodes.length} nodes`;
+    setCountOutput(visibleEdges, visibleNodes);
     distributionView.update(threshold);
 
     const detail = {
