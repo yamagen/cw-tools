@@ -17,18 +17,19 @@ cw rows
 ## Files and responsibilities
 
 ```text
-emit-data.js          generated for one graph by emit -T js
-assets/emit-d3.js     reusable cw-tools renderer
-assets/emit-slider.js reusable Z-threshold visibility controller
-assets/emit-d3.css    reusable appearance rules
-templates/emit-d3.html assembly template
-d3.v7.min.js          external D3 library
+emit-data.js               generated for one graph by emit -T js
+assets/emit-d3.js          reusable cw-tools renderer
+assets/emit-slider.js      reusable Z-threshold visibility controller
+assets/emit-interaction.js reusable browser interaction controller
+assets/emit-d3.css         reusable appearance rules
+templates/emit-d3.html     assembly template
+d3.v7.min.js               external D3 library
 ```
 
-`emit-data.js`, `emit-d3.js`, `emit-slider.js`, and `emit-d3.css` are cw-tools
-files. D3 itself is an external library. The template currently loads the pinned
-D3 7.9.0 browser bundle from jsDelivr. It may instead point to a locally
-downloaded copy named, for example, `d3.v7.min.js`.
+`emit-data.js`, `emit-d3.js`, `emit-slider.js`, `emit-interaction.js`, and
+`emit-d3.css` are cw-tools files. D3 itself is an external library. The template
+currently loads the pinned D3 7.9.0 browser bundle from jsDelivr. It may instead
+point to a locally downloaded copy named, for example, `d3.v7.min.js`.
 
 ## Generate emit-data.js
 
@@ -113,6 +114,7 @@ The template loads files in this order:
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="emit-data.js"></script>
 <script src="../assets/emit-d3.js"></script>
+<script src="../assets/emit-interaction.js"></script>
 <script src="../assets/emit-slider.js"></script>
 ```
 
@@ -123,6 +125,7 @@ D3 library + emit-data.js
           -> emit-d3.js
           -> fixed SVG
 emit-data.js + fixed SVG
+          -> emit-interaction.js
           -> emit-slider.js
 ```
 
@@ -159,8 +162,10 @@ SVG groups. The distribution panel is a small histogram derived from the
 already supplied link values. Its selected fill covers the retained right-hand
 region from the current threshold to the maximum Z value.
 
-The control reports the current threshold and the retained edge/node counts. It
-also dispatches:
+The control reports the current threshold together with retained edge and node
+counts and percentages. Edge and node counts are shown separately so that the
+change in link volume and node coverage can be observed at the same Z
+threshold. It also dispatches:
 
 ```js
 new CustomEvent("emit-z-change", { detail })
@@ -175,6 +180,32 @@ globalThis.emitSlider.reset()
 
 `emit-slider.js` does not call D3. It depends on the SVG already created by
 `emit-d3.js` and uses browser DOM and SVG APIs only.
+
+### Double-click pruning
+
+The external viewer also supports manual pruning in addition to Z-threshold
+filtering. Double-clicking a node makes that node and all edges incident to it
+transparent. This is an interactive presentation operation implemented by
+`assets/emit-interaction.js`.
+
+```text
+Z slider       statistical pruning by threshold
+single click   show source texts for the node
+double click   make the node and its incident edges transparent
+reload         restore the original viewer state
+```
+
+Double-click pruning does not change `emit-data.js`, recalculate Z values,
+restart the force layout, or remove the node from the underlying graph data. It
+therefore allows an observer to suppress visually unhelpful nodes after the
+statistical Z filtering has exposed the region of interest, while keeping the
+original cw/emit result unchanged.
+
+This distinction is intentional. The Z slider provides reproducible filtering
+based on the supplied statistics, whereas double-click pruning provides
+observer-directed pruning during exploration. The slider `Reset` operation
+resets only the Z threshold; a browser reload restores manually pruned nodes and
+edges.
 
 ## CSS and links
 
@@ -219,6 +250,7 @@ When Node.js is installed, syntax-check the generated and reusable JavaScript:
 ```sh
 node --check templates/emit-data.js
 node --check assets/emit-d3.js
+node --check assets/emit-interaction.js
 node --check assets/emit-slider.js
 ```
 
@@ -237,4 +269,5 @@ firefox templates/emit-d3.html
 
 The default slider position is the minimum Z value, so all edges are initially
 visible. Move it to the right to retain progressively higher-Z edges while the
-node positions remain fixed.
+node positions remain fixed. Double-click individual nodes when manual pruning
+is useful; reload the page to restore the unpruned viewer state.
