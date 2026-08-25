@@ -29,11 +29,11 @@ $params = [
     <style>
       #emit-query-panel {
         position: absolute;
-        right: 0.75rem;
-        bottom: 0.75rem;
+        top: 0;
+        left: 0.75rem;
         z-index: 12;
         box-sizing: border-box;
-        width: min(24rem, calc(100vw - 1.5rem));
+        width: min(21rem, calc(100vw - 1.5rem));
         padding: 0.7rem 0.8rem;
         border: 1px solid rgba(0, 0, 0, 0.18);
         border-radius: 0.55rem;
@@ -66,8 +66,7 @@ $params = [
       }
       @media (max-width: 46rem) {
         #emit-query-panel {
-          right: 0.4rem;
-          bottom: 0.4rem;
+          left: 0.4rem;
           width: calc(100vw - 0.8rem);
         }
       }
@@ -146,10 +145,25 @@ $params = [
       const statusElement = document.getElementById("emit-query-status");
       const commandPanel = document.getElementById("emit-command-panel");
       const commandButton = document.getElementById("emit-command-toggle");
+      const controlsPanel = document.getElementById("emit-controls");
+      const queryPanel = document.getElementById("emit-query-panel");
+
+      function positionQueryPanel() {
+        const controlsRect = controlsPanel.getBoundingClientRect();
+        const gap = window.matchMedia("(max-width: 46rem)").matches ? 6.4 : 12;
+        queryPanel.style.top = `${controlsRect.bottom + gap}px`;
+      }
+
+      positionQueryPanel();
+      window.addEventListener("resize", positionQueryPanel);
+      if ("ResizeObserver" in window) {
+        new ResizeObserver(positionQueryPanel).observe(controlsPanel);
+      }
 
       commandPanel.textContent = JSON.stringify(request, null, 2);
       commandButton.addEventListener("click", () => {
         commandPanel.hidden = !commandPanel.hidden;
+        positionQueryPanel();
       });
 
       function loadScript(src) {
@@ -182,6 +196,7 @@ $params = [
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
           await loadScript("../assets/emit-retention.js");
+          positionQueryPanel();
         } catch (error) {
           statusElement.textContent = `Error: ${error.message}`;
         }
