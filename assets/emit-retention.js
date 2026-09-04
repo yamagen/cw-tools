@@ -4,6 +4,7 @@
   const SVG_NS = "http://www.w3.org/2000/svg";
   const data = globalThis.emitData;
   const sliderApi = globalThis.emitSlider;
+  const alphaApi = globalThis.emitAlpha;
 
   if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.links)) {
     throw new Error("emit-retention.js requires emit-data.js to be loaded first");
@@ -33,17 +34,25 @@
     return element;
   }
 
-  function buildRetentionPoints() {
+  function currentAlphaThreshold() {
+    return alphaApi ? alphaApi.currentAlpha() : -Infinity;
+  }
+
+  function buildRetentionPoints(alphaThreshold) {
     const links = data.links
       .map((link) => ({
         z: Number(link.z),
+        alpha: Number(link.alpha),
         source: endpointId(link.source),
         target: endpointId(link.target),
       }))
-      .filter((link) => Number.isFinite(link.z))
+      .filter((link) =>
+        Number.isFinite(link.z) &&
+        (!alphaApi || (Number.isFinite(link.alpha) && link.alpha >= alphaThreshold)),
+      )
       .sort((a, b) => b.z - a.z);
 
-    const totalEdges = links.length;
+    const totalEdges = data.links.length;
     const totalNodes = data.nodes.length;
     const activeNodes = new Set();
     const points = [];
@@ -73,18 +82,6 @@
     return points.sort((a, b) => a.z - b.z);
   }
 
-  const points = buildRetentionPoints();
-  if (points.length === 0) {
-    toggleButton.disabled = true;
-    return;
-  }
-
-  const maxGapPoint = points.reduce((best, point) => {
-    const gap = point.nodePercent - point.edgePercent;
-    const bestGap = best.nodePercent - best.edgePercent;
-    return gap > bestGap ? point : best;
-  });
-
   const width = 400;
   const height = 400;
   const margin = { top: 34, right: 24, bottom: 34, left: 42 };
@@ -97,16 +94,10 @@
   const x = (z) => margin.left + ((z - zMin) / zSpan) * innerWidth;
   const y = (percent) => margin.top + ((100 - percent) / 100) * innerHeight;
 
-  function pathFor(key) {
-    return points
-      .map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.z)} ${y(point[key])}`)
-      .join(" ");
-  }
-
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "retained edge and node percentages by Z threshold");
+  svg.setAttribute("aria-label", "retained edge and node percentages by Z threshold at the current alpha threshold");
 
   const xAxisY = height - margin.bottom;
   const yAxisX = margin.left;
@@ -129,14 +120,14 @@
     svg.append(label);
   }
 
-  svg.append(svgElement("path", { d: pathFor("edgePercent"), class: "emit-retention-edge-curve" }));
-  svg.append(svgElement("path", { d: pathFor("nodePercent"), class: "emit-retention-node-curve" }));
+  const edgePath = svgElement("path", { class: "emit-retention-edge-curve" });
+  const nodePath = svgElement("path", { class: "emit-retention-node-curve" });
+  svg.append(edgePath, nodePath);
 
-  const maxGapX = x(maxGapPoint.z);
   const maxGapLine = svgElement("line", {
-    x1: maxGapX,
+    x1: x(zMin),
     y1: margin.top,
-    x2: maxGapX,
+    x2: x(zMin),
     y2: xAxisY,
     class: "emit-retention-max-gap",
   });
@@ -157,8 +148,44 @@
   maxGapLegend.textContent = "max n-e gap";
   svg.append(edgeLegend, nodeLegend, maxGapLegend);
 
+  let points = [];
+  let maxGapPoint = null;
+  let alphaThreshold = currentAlphaThreshold();
+
+  function pathFor(key) {
+    return points
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.z)} ${y(point[key])}`)
+      .join(" ");
+  }
+
+  function rebuild(nextAlphaThreshold) {
+    alphaThreshold = Number(nextAlphaThreshold);
+    points = buildRetentionPoints(alphaThreshold);
+
+    edgePath.setAttribute("d", pathFor("edgePercent"));
+    nodePath.setAttribute("d", pathFor("nodePercent"));
+
+    if (points.length === 0) {
+      maxGapPoint = null;
+      maxGapLine.style.display = "none";
+      return;
+    }
+
+    maxGapPoint = points.reduce((best, point) => {
+      const gap = point.nodePercent - point.edgePercent;
+      const bestGap = best.nodePercent - best.edgePercent;
+      return gap > bestGap ? point : best;
+    });
+
+    const xx = x(maxGapPoint.z);
+    maxGapLine.style.display = "";
+    maxGapLine.setAttribute("x1", String(xx));
+    maxGapLine.setAttribute("x2", String(xx));
+  }
+
   function pointForThreshold(threshold) {
-    let chosen = points[0];
+    if (points.length === 0) return null;
+    let chosen = points[points.length - 1];
     for (const point of points) {
       if (point.z < threshold) continue;
       chosen = point;
@@ -168,14 +195,23 @@
   }
 
   function update(detail) {
-    const threshold = Number(detail?.threshold ?? sliderApi.slider.value);
+    const nextAlpha = Number(detail?.alphaThreshold ?? currentAlphaThreshold());
+    if (!Number.isFinite(alphaThreshold) || nextAlpha !== alphaThreshold) {
+      rebuild(nextAlpha);
+    }
+
+    const threshold = Number(detail?.zThreshold ?? detail?.threshold ?? sliderApi.slider.value);
     const visibleEdges = Number(detail?.visibleEdges);
     const visibleNodes = Number(detail?.visibleNodes);
     const totalEdges = Number(detail?.totalEdges ?? data.links.length);
     const totalNodes = Number(detail?.totalNodes ?? data.nodes.length);
     const fallback = pointForThreshold(threshold);
-    const edgePercent = Number.isFinite(visibleEdges) && totalEdges > 0 ? (visibleEdges / totalEdges) * 100 : fallback.edgePercent;
-    const nodePercent = Number.isFinite(visibleNodes) && totalNodes > 0 ? (visibleNodes / totalNodes) * 100 : fallback.nodePercent;
+    const edgePercent = Number.isFinite(visibleEdges) && totalEdges > 0
+      ? (visibleEdges / totalEdges) * 100
+      : (fallback?.edgePercent ?? 0);
+    const nodePercent = Number.isFinite(visibleNodes) && totalNodes > 0
+      ? (visibleNodes / totalNodes) * 100
+      : (fallback?.nodePercent ?? 0);
     const xx = x(Math.max(zMin, Math.min(zMax, threshold)));
 
     currentLine.setAttribute("x1", String(xx));
@@ -185,7 +221,8 @@
     nodeDot.setAttribute("cx", String(xx));
     nodeDot.setAttribute("cy", String(y(nodePercent)));
 
-    valueOutput.textContent = `edges ${edgePercent.toFixed(1)}% · nodes ${nodePercent.toFixed(1)}%`;
+    const alphaText = alphaApi && Number.isFinite(nextAlpha) ? ` · α ${Number(nextAlpha.toPrecision(5))}` : "";
+    valueOutput.textContent = `edges ${edgePercent.toFixed(1)}% · nodes ${nodePercent.toFixed(1)}%${alphaText}`;
   }
 
   toggleButton.addEventListener("click", () => {
@@ -193,8 +230,20 @@
     toggleButton.setAttribute("aria-pressed", String(!panel.hidden));
   });
 
-  globalThis.addEventListener("emit-z-change", (event) => update(event.detail));
+  rebuild(alphaThreshold);
+  globalThis.addEventListener("emit-filter-change", (event) => update(event.detail));
+  if (!alphaApi) {
+    globalThis.addEventListener("emit-z-change", (event) => update(event.detail));
+  }
   update();
 
-  globalThis.emitRetention = Object.freeze({ panel, svg, points, maxGapPoint, update });
+  globalThis.emitRetention = Object.freeze({
+    panel,
+    svg,
+    update,
+    rebuild,
+    get points() { return points; },
+    get maxGapPoint() { return maxGapPoint; },
+    get alphaThreshold() { return alphaThreshold; },
+  });
 })();
