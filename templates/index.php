@@ -25,6 +25,7 @@ $params = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>cw-tools dynamic graph</title>
     <link rel="stylesheet" href="../assets/emit-d3.css" />
+    <link rel="stylesheet" href="../assets/emit-alpha.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
     <style>
       #emit-query-panel {
@@ -73,9 +74,12 @@ $params = [
     </style>
   </head>
   <body>
-    <section id="emit-controls" aria-label="Z threshold controls">
+    <section id="emit-controls" aria-label="Z and alpha threshold controls">
       <div id="emit-control-summary">
-        <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+        <div id="emit-filter-values">
+          <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+          <output id="emit-alpha-value" for="emit-alpha-slider">α threshold</output>
+        </div>
         <span id="emit-z-count" aria-live="polite"></span>
       </div>
       <svg id="emit-z-distribution"></svg>
@@ -83,6 +87,13 @@ $params = [
         <span id="emit-z-min"></span>
         <input id="emit-z-slider" type="range" aria-label="minimum Z value" />
         <span id="emit-z-max"></span>
+        <div id="emit-alpha-row">
+          <input id="emit-alpha-slider" type="range" aria-label="minimum alpha CTF-component value" />
+          <div id="emit-alpha-limits" aria-hidden="true">
+            <span id="emit-alpha-min"></span>
+            <span id="emit-alpha-max"></span>
+          </div>
+        </div>
         <div id="emit-button-row">
           <button id="emit-reheat">Reheat</button>
           <button id="emit-z-reset">Reset</button>
@@ -195,6 +206,7 @@ $params = [
           await loadScript("../assets/emit-d3.js");
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
+          await loadScript("../assets/emit-alpha.js");
           await loadScript("../assets/emit-retention.js");
           positionQueryPanel();
         } catch (error) {
