@@ -1,0 +1,46 @@
+/* cw-tools alpha filtration controls */
+
+#emit-filter-values {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.1rem;
+}
+
+#emit-alpha-value {
+  font-size: 0.9rem;
+  font-weight: 650;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#emit-alpha-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+#emit-alpha-slider {
+  width: 100%;
+  margin: 0;
+}
+
+#emit-alpha-limits {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #666;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#emit-alpha-min,
+#emit-alpha-max {
+  white-space: nowrap;
+}
+
+@media (max-width: 42rem) {
+  #emit-alpha-value {
+    font-size: 0.8rem;
+  }
+}
