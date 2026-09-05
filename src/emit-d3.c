@@ -90,6 +90,14 @@ static void write_edge_label(FILE *stream, const Edge *edge,
     js_write_string(stream, label);
 }
 
+static void write_component(FILE *stream, const Edge *edge, double value)
+{
+    if (edge->components_available)
+        fprintf(stream, "%.17g", value);
+    else
+        fputs("null", stream);
+}
+
 static void write_graph_data(FILE *stream, const EdgeVec *edges,
                              const NodeVec *nodes, const Config *config)
 {
@@ -176,10 +184,15 @@ static void write_graph_data(FILE *stream, const EdgeVec *edges,
         js_write_string(stream, edge->source);
         fputs(",\"target\":", stream);
         js_write_string(stream, edge->target);
-        fprintf(stream,
-                ",\"ctf\":%zu,\"cdf\":%zu,\"cw\":%.17g,\"z\":%.17g,"
-                "\"z_rank\":%zu,\"z_sign\":",
-                edge->ctf, edge->cdf, edge->cw, edge->z, z_rank);
+        fprintf(stream, ",\"ctf\":%zu,\"cdf\":%zu,\"g\":",
+                edge->ctf, edge->cdf);
+        write_component(stream, edge, edge->g);
+        fputs(",\"c\":", stream);
+        write_component(stream, edge, edge->c);
+        fputs(",\"p\":", stream);
+        write_component(stream, edge, edge->p);
+        fprintf(stream, ",\"cw\":%.17g,\"z\":%.17g,\"z_rank\":%zu,\"z_sign\":",
+                edge->cw, edge->z, z_rank);
         js_write_string(stream, z_sign);
         fputs(",\"label\":", stream);
         write_edge_label(stream, edge, config);
@@ -295,8 +308,8 @@ void emit_d3_write(FILE *stream, const EdgeVec *edges,
         ".on(\"mousemove\",moveTip).on(\"mouseleave\",hideTip);\n"
         "link.on(\"mouseenter\",(e,d)=>showTip(e,"
         "`source: ${d.source.id??d.source}\\ntarget: ${d.target.id??d.target}"
-        "\\nctf: ${d.ctf}\\ncdf: ${d.cdf}\\ncw: ${d.cw}\\nz: ${d.z}"
-        "\\nunit_ids: ${d.unit_ids.join(\", \")}`))"
+        "\\nctf: ${d.ctf}\\ncdf: ${d.cdf}\\nG: ${d.g??\"NA\"}\\nC: ${d.c??\"NA\"}\\nP: ${d.p??\"NA\"}"
+        "\\ncw: ${d.cw}\\nz: ${d.z}\\nunit_ids: ${d.unit_ids.join(\", \")}`))"
         ".on(\"mousemove\",moveTip).on(\"mouseleave\",hideTip);\n"
         "const simulation=d3.forceSimulation(graph.nodes)"
         ".force(\"link\",d3.forceLink(graph.links).id(d=>d.id).distance(graph.link_distance))"
