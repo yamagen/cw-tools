@@ -28,6 +28,7 @@ $params = [
     <link rel="stylesheet" href="../assets/emit-weight.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
     <link rel="stylesheet" href="../assets/emit-pos.css" />
+    <link rel="stylesheet" href="../assets/emit-c-support.css" />
     <style>
       #emit-query-panel {
         position: absolute;
@@ -106,6 +107,7 @@ $params = [
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
           <button id="emit-pos-toggle" type="button" aria-pressed="false">POS</button>
+          <button id="emit-c-support-toggle" type="button" aria-pressed="false">C support</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
@@ -129,6 +131,20 @@ $params = [
           <tr><th>POS</th><th>nodes</th><th>%</th></tr>
         </thead>
         <tbody id="emit-pos-body"></tbody>
+      </table>
+    </aside>
+
+    <aside id="emit-c-support-panel" hidden aria-label="C support propagation">
+      <div id="emit-c-support-header">
+        <strong>C support</strong>
+        <output id="emit-c-support-value"></output>
+      </div>
+      <p id="emit-c-support-help">Current α is compared with α=0 at the same β and Z. ΔW is the summed raw C-derived support from currently visible incident edges. Click a node to inspect its strongest supporting edges.</p>
+      <table id="emit-c-support-table">
+        <thead>
+          <tr><th>node</th><th>POS</th><th>ΣΔW</th><th>edges</th><th>status</th></tr>
+        </thead>
+        <tbody id="emit-c-support-body"></tbody>
       </table>
     </aside>
 
@@ -229,6 +245,7 @@ $params = [
           await loadScript("../assets/emit-weight.js");
           await loadScript("../assets/emit-retention.js");
           await loadScript("../assets/emit-pos.js");
+          await loadScript("../assets/emit-c-support.js");
           positionQueryPanel();
         } catch (error) {
           statusElement.textContent = `Error: ${error.message}`;
