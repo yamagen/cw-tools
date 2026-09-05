@@ -59,6 +59,10 @@ typedef struct {
     double idf2;
     size_t fq2;
     bool fq2_available;
+    double g;
+    double c;
+    double p;
+    bool components_available;
     double cw;
     double z;
     char **unit_ids;
