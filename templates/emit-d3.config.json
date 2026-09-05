@@ -3,5 +3,9 @@
     "path": "emit-texts.json",
     "title": "Source texts",
     "font_size": "0.8rem"
+  },
+  "observation": {
+    "pos_field": 3,
+    "pos_title": "POS composition"
   }
 }
