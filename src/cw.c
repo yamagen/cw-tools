@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define PROG_NAME "cw"
-#define PROG_VERSION "0.9.5"
+#define PROG_VERSION "0.10.0"
 
 typedef enum {
   CW_METHOD_BASIC = 1,
@@ -482,24 +482,40 @@ typedef struct {
   double sd;
 } CwDistribution;
 
+typedef struct {
+  double g;
+  double c;
+  double p;
+} CwComponents;
+
+static CwComponents calculate_components(const CwtPairStat *pair, size_t ctf,
+                                         size_t global_unit_count) {
+  CwComponents components;
+  components.g = sqrt(pair->idf1 * pair->idf2);
+  components.c = 1.0 + log((double)ctf);
+  components.p =
+      1.0 + log((double)global_unit_count / (double)pair->cdf);
+  return components;
+}
+
 static double calculate_cw(CwMethod method, const CwtPairStat *pair, size_t ctf,
                            size_t key_fq, size_t global_unit_count) {
-  double token_weight = sqrt(pair->idf1 * pair->idf2);
+  CwComponents components =
+      calculate_components(pair, ctf, global_unit_count);
 
   switch (method) {
   case CW_METHOD_BASIC:
-    return (1.0 + log((double)ctf)) * token_weight;
+    return components.c * components.g;
 
   case CW_METHOD_WAKA_GRAPH:
-    return (1.0 + log((double)ctf) / log(CW_LOG_BASE)) * token_weight /
+    return (1.0 + log((double)ctf) / log(CW_LOG_BASE)) * components.g /
            (1.0 + log((double)key_fq) / log(CW_LOG_BASE));
 
   case CW_METHOD_RARE_PATTERN:
-    return (1.0 + (double)(key_fq / ctf)) * token_weight;
+    return (1.0 + (double)(key_fq / ctf)) * components.g;
 
   case CW_METHOD_GLOBAL_PAIR:
-    return (1.0 + log((double)global_unit_count / (double)pair->cdf)) *
-           token_weight * (1.0 + log((double)ctf));
+    return components.p * components.g * components.c;
   }
 
   return NAN;
@@ -584,6 +600,8 @@ static void print_pairs(const CwtCorpusStats *stats,
       continue;
 
     size_t cdf = count_selected_cdf(&pair->unit_ids, key_units);
+    CwComponents components =
+        calculate_components(pair, ctf, stats->unit_count);
     double cw = calculate_cw(method, pair, ctf, key_fq, stats->unit_count);
     double z = 0.0;
     const SelectedTokenFrequency *fq1 =
@@ -599,7 +617,8 @@ static void print_pairs(const CwtCorpusStats *stats,
     print_frequency_field(fq1);
     printf("\t%zu\t%.12g\t", pair->df2, pair->idf2);
     print_frequency_field(fq2);
-    printf("\t%.17g\t%.17g", cw, z);
+    printf("\t%.17g\t%.17g\t%.17g\t%.17g\t%.17g", components.g,
+           components.c, components.p, cw, z);
     print_selected_unit_ids(&pair->unit_ids, key_units);
     putchar('\n');
   }
@@ -631,7 +650,14 @@ static void print_help(FILE *stream) {
       "  f1[/f2[/f3[/f4[/f5]]]]\n"
       "\n"
       "Output:\n"
-      "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...\n"
+      "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 G C P cw z unit_id...\n"
+      "\n"
+      "Observation components:\n"
+      "  G      = sqrt(idf1 * idf2)\n"
+      "  C      = 1 + ln(local_ctf)\n"
+      "  P      = 1 + ln(N / global_pair_df)\n"
+      "  These are emitted independently so downstream observation can use\n"
+      "  W(alpha,beta) = G * C^alpha * P^beta without recalculating them.\n"
       "\n"
       "Pattern fields determine token identity, hash registration, pair\n"
       "identity, df/idf, and local fq.  Complete tokens are retained for\n"
@@ -648,11 +674,12 @@ static void print_help(FILE *stream) {
       "older three-column pair input remains readable, but fq is output as '-'.\n"
       "\n"
       "CW methods (-M 7 is the default):\n"
-      "  -M 1   basic: (1 + ln(ctf)) * sqrt(idf1 * idf2)\n"
+      "  -M 1   basic: C * G = (1 + ln(ctf)) * sqrt(idf1 * idf2)\n"
       "  -M 7   waka graph: (1 + log10(ctf)) * sqrt(idf1 * idf2)\n"
       "           divided by (1 + log10(key_fq))\n"
       "  -M 12  rare pattern: (1 + key_fq / ctf) * sqrt(idf1 * idf2)\n"
-      "  -M 16  global pair: (1 + ln(N / global_pair_df))\n"
+      "  -M 16  global pair: P * C * G\n"
+      "           = (1 + ln(N / global_pair_df))\n"
       "           * sqrt(idf1 * idf2) * (1 + ln(local_ctf))\n"
       "  z      = (cw - mean_selected_cw) / sd_selected_cw\n"
       "\n"
