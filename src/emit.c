@@ -19,7 +19,7 @@
 #include "emit-util.h"
 
 #define PROG_NAME "emit"
-#define PROG_VERSION "0.8.0"
+#define PROG_VERSION "0.9.0"
 #define DEFAULT_CONFIG "config/emit-config.json"
 
 typedef struct {
@@ -915,7 +915,8 @@ static void invalid_row(const char *source, size_t line_number)
 {
     die_line(source, line_number,
              "expected cw output fields: token1 token2 ctf cdf df1 idf1 "
-             "fq1 df2 idf2 fq2 cw z unit_id... (legacy rows without fq are also accepted)");
+             "fq1 df2 idf2 fq2 G C P cw z unit_id... "
+             "(legacy rows without components or fq are also accepted)");
 }
 
 static bool edge_selected(const Edge *edge, const Filters *filters)
@@ -943,8 +944,45 @@ static Edge parse_edge_fields(char **fields, size_t count,
         !try_double(fields[5], &edge.idf1))
         invalid_row(source, line_number);
 
+    bool component_row = false;
+    if (count >= 15) {
+        size_t fq1, df2, fq2;
+        bool fq1_available, fq2_available;
+        double idf2, g, c, p, cw, z;
+        component_row =
+            try_optional_size(fields[6], &fq1, &fq1_available) &&
+            try_size(fields[7], &df2) &&
+            try_double(fields[8], &idf2) &&
+            try_optional_size(fields[9], &fq2, &fq2_available) &&
+            try_double(fields[10], &g) &&
+            try_double(fields[11], &c) &&
+            try_double(fields[12], &p) &&
+            try_double(fields[13], &cw) &&
+            try_double(fields[14], &z);
+        if (component_row) {
+            edge.fq1 = fq1;
+            edge.fq1_available = fq1_available;
+            edge.df2 = df2;
+            edge.idf2 = idf2;
+            edge.fq2 = fq2;
+            edge.fq2_available = fq2_available;
+            edge.g = g;
+            edge.c = c;
+            edge.p = p;
+            edge.components_available = true;
+            edge.cw = cw;
+            edge.z = z;
+            edge.unit_count = count - 15;
+            if (edge.unit_count > 0) {
+                edge.unit_ids = emit_xmalloc(edge.unit_count * sizeof(char *));
+                for (size_t i = 0; i < edge.unit_count; i++)
+                    edge.unit_ids[i] = emit_xstrdup(fields[i + 15]);
+            }
+        }
+    }
+
     bool current = false;
-    if (count >= 12) {
+    if (!component_row && count >= 12) {
         size_t fq1, df2, fq2;
         bool fq1_available, fq2_available;
         double idf2, cw, z;
@@ -962,6 +1000,7 @@ static Edge parse_edge_fields(char **fields, size_t count,
             edge.idf2 = idf2;
             edge.fq2 = fq2;
             edge.fq2_available = fq2_available;
+            edge.components_available = false;
             edge.cw = cw;
             edge.z = z;
             edge.unit_count = count - 12;
@@ -973,7 +1012,7 @@ static Edge parse_edge_fields(char **fields, size_t count,
         }
     }
 
-    if (!current) {
+    if (!component_row && !current) {
         if (!try_size(fields[6], &edge.df2) ||
             !try_double(fields[7], &edge.idf2) ||
             !try_double(fields[8], &edge.cw) ||
@@ -981,6 +1020,7 @@ static Edge parse_edge_fields(char **fields, size_t count,
             invalid_row(source, line_number);
         edge.fq1_available = false;
         edge.fq2_available = false;
+        edge.components_available = false;
         edge.unit_count = count - 10;
         if (edge.unit_count > 0) {
             edge.unit_ids = emit_xmalloc(edge.unit_count * sizeof(char *));
@@ -1103,8 +1143,8 @@ static void print_help(FILE *stream)
             "Emit JSON, Graphviz DOT, Markdown, LaTeX, HTML, or D3 HTML "
             "from cw output.\n\n"
             "Input columns:\n"
-            "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...\n"
-            "Legacy input without fq1/fq2 is also accepted.\n\n"
+            "  token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 G C P cw z unit_id...\n"
+            "Legacy input without G/C/P or fq1/fq2 is also accepted.\n\n"
             "Configuration:\n"
             "  -c, --config FILE     read FILE instead of %s\n\n"
             "Temporary overrides:\n"
