@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>cw-tools graph</title>
     <link rel="stylesheet" href="../assets/emit-d3.css" />
-    <link rel="stylesheet" href="../assets/emit-alpha.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
   </head>
   <body>
-    <section id="emit-controls" aria-label="Z and alpha threshold controls">
+    <section id="emit-controls" aria-label="Z threshold controls">
       <div id="emit-control-summary">
-        <div id="emit-filter-values">
-          <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
-          <output id="emit-alpha-value" for="emit-alpha-slider">α threshold</output>
-        </div>
+        <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
         <span id="emit-z-count" aria-live="polite"></span>
       </div>
       <svg id="emit-z-distribution"></svg>
@@ -22,13 +18,6 @@
         <span id="emit-z-min"></span>
         <input id="emit-z-slider" type="range" aria-label="minimum Z value" />
         <span id="emit-z-max"></span>
-        <div id="emit-alpha-row">
-          <input id="emit-alpha-slider" type="range" aria-label="minimum alpha CTF-component value" />
-          <div id="emit-alpha-limits" aria-hidden="true">
-            <span id="emit-alpha-min"></span>
-            <span id="emit-alpha-max"></span>
-          </div>
-        </div>
         <div id="emit-button-row">
           <button id="emit-reheat">Reheat</button>
           <button id="emit-z-reset">Reset</button>
@@ -63,7 +52,6 @@
     <script src="../assets/emit-d3.js"></script>
     <script src="../assets/emit-interaction.js"></script>
     <script src="../assets/emit-slider.js"></script>
-    <script src="../assets/emit-alpha.js"></script>
     <script src="../assets/emit-retention.js"></script>
 
     <script>
