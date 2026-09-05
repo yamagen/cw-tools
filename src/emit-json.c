@@ -51,6 +51,14 @@ static void json_token_fields(FILE *stream, const char *token)
     fputc(']', stream);
 }
 
+static void json_component(FILE *stream, bool available, double value)
+{
+    if (available)
+        fprintf(stream, "%.17g", value);
+    else
+        fputs("null", stream);
+}
+
 void emit_json_write(FILE *stream, const EdgeVec *edges,
                      const NodeVec *nodes, const Config *config)
 {
@@ -58,7 +66,7 @@ void emit_json_write(FILE *stream, const EdgeVec *edges,
 
     fputs("{\n", stream);
     fputs("  \"format\": \"cw-tools/graph\",\n", stream);
-    fputs("  \"version\": 1,\n", stream);
+    fputs("  \"version\": 2,\n", stream);
     fputs("  \"emit\": {\"config\": ", stream);
     json_string(stream, config->config_path != NULL ? config->config_path : "");
     fputs(", \"output_format\": ", stream);
@@ -122,6 +130,12 @@ void emit_json_write(FILE *stream, const EdgeVec *edges,
             fprintf(stream, "%zu", edge->fq2);
         else
             fputs("null", stream);
+        fputs(", \"g\": ", stream);
+        json_component(stream, edge->components_available, edge->g);
+        fputs(", \"c\": ", stream);
+        json_component(stream, edge->components_available, edge->c);
+        fputs(", \"p\": ", stream);
+        json_component(stream, edge->components_available, edge->p);
         fprintf(stream, ", \"cw\": %.17g, \"z\": %.17g, \"unit_ids\": [",
                 edge->cw, edge->z);
         for (size_t j = 0; j < edge->unit_count; j++) {
