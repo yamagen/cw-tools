@@ -1,5 +1,9 @@
 /* cw-tools C-support propagation diagnostic */
 
+#emit-button-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 #emit-c-support-toggle {
   padding: 0.2rem 0.55rem;
   border: 1px solid #999;
