@@ -27,6 +27,7 @@ $params = [
     <link rel="stylesheet" href="../assets/emit-d3.css" />
     <link rel="stylesheet" href="../assets/emit-weight.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
+    <link rel="stylesheet" href="../assets/emit-pos.css" />
     <style>
       #emit-query-panel {
         position: absolute;
@@ -104,6 +105,7 @@ $params = [
           <button id="emit-z-reset">Reset Z</button>
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
+          <button id="emit-pos-toggle" type="button" aria-pressed="false">POS</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
@@ -115,6 +117,19 @@ $params = [
         <output id="emit-retention-value"></output>
       </div>
       <svg id="emit-retention-chart"></svg>
+    </aside>
+
+    <aside id="emit-pos-panel" hidden aria-label="POS composition">
+      <div id="emit-pos-header">
+        <strong id="emit-pos-title">POS composition</strong>
+        <output id="emit-pos-value"></output>
+      </div>
+      <table id="emit-pos-table">
+        <thead>
+          <tr><th>POS</th><th>nodes</th><th>%</th></tr>
+        </thead>
+        <tbody id="emit-pos-body"></tbody>
+      </table>
     </aside>
 
     <aside id="emit-source-panel" hidden aria-label="Source texts">
@@ -213,6 +228,7 @@ $params = [
           await loadScript("../assets/emit-slider.js");
           await loadScript("../assets/emit-weight.js");
           await loadScript("../assets/emit-retention.js");
+          await loadScript("../assets/emit-pos.js");
           positionQueryPanel();
         } catch (error) {
           statusElement.textContent = `Error: ${error.message}`;
