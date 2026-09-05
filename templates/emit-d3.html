@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../assets/emit-d3.css" />
     <link rel="stylesheet" href="../assets/emit-weight.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
+    <link rel="stylesheet" href="../assets/emit-pos.css" />
   </head>
   <body>
     <section id="emit-controls" aria-label="Z alpha beta observation controls">
@@ -39,6 +40,7 @@
           <button id="emit-z-reset">Reset Z</button>
           <button id="emit-command-toggle">Command</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
+          <button id="emit-pos-toggle" type="button" aria-pressed="false">POS</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
@@ -50,6 +52,19 @@
         <output id="emit-retention-value"></output>
       </div>
       <svg id="emit-retention-chart"></svg>
+    </aside>
+
+    <aside id="emit-pos-panel" hidden aria-label="POS composition">
+      <div id="emit-pos-header">
+        <strong id="emit-pos-title">POS composition</strong>
+        <output id="emit-pos-value"></output>
+      </div>
+      <table id="emit-pos-table">
+        <thead>
+          <tr><th>POS</th><th>nodes</th><th>%</th></tr>
+        </thead>
+        <tbody id="emit-pos-body"></tbody>
+      </table>
     </aside>
 
     <aside id="emit-source-panel" hidden aria-label="Source texts">
@@ -70,6 +85,7 @@
     <script src="../assets/emit-slider.js"></script>
     <script src="../assets/emit-weight.js"></script>
     <script src="../assets/emit-retention.js"></script>
+    <script src="../assets/emit-pos.js"></script>
 
     <script>
       const commandPanel = document.getElementById("emit-command-panel");
