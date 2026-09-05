@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../assets/emit-weight.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
     <link rel="stylesheet" href="../assets/emit-pos.css" />
+    <link rel="stylesheet" href="../assets/emit-c-support.css" />
   </head>
   <body>
     <section id="emit-controls" aria-label="Z alpha beta observation controls">
@@ -41,6 +42,7 @@
           <button id="emit-command-toggle">Command</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
           <button id="emit-pos-toggle" type="button" aria-pressed="false">POS</button>
+          <button id="emit-c-support-toggle" type="button" aria-pressed="false">C support</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
@@ -67,6 +69,20 @@
       </table>
     </aside>
 
+    <aside id="emit-c-support-panel" hidden aria-label="C support propagation">
+      <div id="emit-c-support-header">
+        <strong>C support</strong>
+        <output id="emit-c-support-value"></output>
+      </div>
+      <p id="emit-c-support-help">Current α is compared with α=0 at the same β and Z. ΔW is the summed raw C-derived support from currently visible incident edges. Click a node to inspect its strongest supporting edges.</p>
+      <table id="emit-c-support-table">
+        <thead>
+          <tr><th>node</th><th>POS</th><th>ΣΔW</th><th>edges</th><th>status</th></tr>
+        </thead>
+        <tbody id="emit-c-support-body"></tbody>
+      </table>
+    </aside>
+
     <aside id="emit-source-panel" hidden aria-label="Source texts">
       <header id="emit-source-header">
         <strong id="emit-source-title">Source texts</strong>
@@ -86,6 +102,7 @@
     <script src="../assets/emit-weight.js"></script>
     <script src="../assets/emit-retention.js"></script>
     <script src="../assets/emit-pos.js"></script>
+    <script src="../assets/emit-c-support.js"></script>
 
     <script>
       const commandPanel = document.getElementById("emit-command-panel");
