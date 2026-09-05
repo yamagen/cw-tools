@@ -25,6 +25,7 @@ $params = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>cw-tools dynamic graph</title>
     <link rel="stylesheet" href="../assets/emit-d3.css" />
+    <link rel="stylesheet" href="../assets/emit-weight.css" />
     <link rel="stylesheet" href="../assets/emit-retention.css" />
     <style>
       #emit-query-panel {
@@ -73,9 +74,16 @@ $params = [
     </style>
   </head>
   <body>
-    <section id="emit-controls" aria-label="Z threshold controls">
+    <section id="emit-controls" aria-label="Z alpha beta observation controls">
       <div id="emit-control-summary">
-        <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+        <div>
+          <output id="emit-z-value" for="emit-z-slider">Z threshold</output>
+          <div id="emit-weight-values">
+            <output id="emit-alpha-value" for="emit-alpha-slider">α(C) 1.00</output>
+            <output id="emit-beta-value" for="emit-beta-slider">β(P) 1.00</output>
+            <output id="emit-weight-state">PCG · M16</output>
+          </div>
+        </div>
         <span id="emit-z-count" aria-live="polite"></span>
       </div>
       <svg id="emit-z-distribution"></svg>
@@ -83,9 +91,17 @@ $params = [
         <span id="emit-z-min"></span>
         <input id="emit-z-slider" type="range" aria-label="minimum Z value" />
         <span id="emit-z-max"></span>
+        <div class="emit-weight-row">
+          <label for="emit-alpha-slider">α · C</label>
+          <input id="emit-alpha-slider" type="range" aria-label="C contribution alpha" />
+        </div>
+        <div class="emit-weight-row">
+          <label for="emit-beta-slider">β · P</label>
+          <input id="emit-beta-slider" type="range" aria-label="P contribution beta" />
+        </div>
         <div id="emit-button-row">
           <button id="emit-reheat">Reheat</button>
-          <button id="emit-z-reset">Reset</button>
+          <button id="emit-z-reset">Reset Z</button>
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
         </div>
@@ -195,6 +211,7 @@ $params = [
           await loadScript("../assets/emit-d3.js");
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
+          await loadScript("../assets/emit-weight.js");
           await loadScript("../assets/emit-retention.js");
           positionQueryPanel();
         } catch (error) {
