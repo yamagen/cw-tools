@@ -35,7 +35,7 @@ $params = [
         left: 0.75rem;
         z-index: 12;
         box-sizing: border-box;
-        width: min(21rem, calc(100vw - 1.5rem));
+        width: min(24rem, calc(100vw - 1.5rem));
         padding: 0.7rem 0.8rem;
         border: 1px solid rgba(0, 0, 0, 0.18);
         border-radius: 0.55rem;
