@@ -1,0 +1,48 @@
+/* cw-tools alpha-beta weighting controls */
+
+#emit-weight-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 0.35rem 0.8rem;
+  align-items: baseline;
+}
+
+#emit-alpha-value,
+#emit-beta-value {
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#emit-weight-state {
+  grid-column: 1 / -1;
+  color: #555;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.emit-weight-row {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.emit-weight-row label {
+  color: #444;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+#emit-alpha-slider,
+#emit-beta-slider {
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 42rem) {
+  #emit-weight-values {
+    grid-template-columns: 1fr 1fr;
+  }
+}
