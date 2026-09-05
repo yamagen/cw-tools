@@ -28,7 +28,7 @@ svg.graph {
   left: 0.75rem;
   z-index: 10;
   box-sizing: border-box;
-  width: min(21rem, calc(100vw - 1.5rem));
+  width: min(24rem, calc(100vw - 1.5rem));
   padding: 0.75rem 0.85rem 0.8rem;
   border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 0.55rem;
@@ -66,7 +66,7 @@ svg.graph {
 
 #emit-z-distribution {
   display: block;
-  width: 20rem;
+  width: 22rem;
   height: 20rem;
   margin: 0 auto;
   overflow: visible;
@@ -345,6 +345,7 @@ svg.graph {
   }
 
   #emit-z-distribution {
+    width: 100%;
     height: 5.5rem;
   }
 
