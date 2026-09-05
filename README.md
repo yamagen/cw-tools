@@ -1,6 +1,6 @@
 # cw-tools: Transparent Unix Filters for Exploratory Text Analysis
 
-Last updated: 2026/08/22.
+Last updated: 2026/09/05.
 
 <p align="center">
   <img src="docs/images/cw-tools-social-preview.png"
@@ -67,6 +67,144 @@ inspected directly with `head`, `grep`, `awk`, `sort`, or `lv`.
 Record the version of every program used in an analysis. Method numbers and
 command-line options should also be written explicitly even when a default
 exists.
+
+## Interactive α–β observation snapshot (2026-09-05)
+
+The development branch `feature/alpha-beta-observation` adds a browser-side
+observation layer for continuously inspecting the Method-16 components rather
+than treating `PCG` as one opaque fixed formula.
+
+The current observation model is
+
+$$
+W(\alpha,\beta)=G\,C^\alpha P^\beta,
+$$
+
+with
+
+$$
+G=\sqrt{idf(t_1)idf(t_2)},
+$$
+
+$$
+C(e)=1+\ln ctf(e),
+$$
+
+and
+
+$$
+P(e)=1+\ln\frac{N}{cdf(e)}.
+$$
+
+The browser provides three continuous controls:
+
+```text
+Z       current filtration threshold
+α · C   contribution of local pair recurrence
+β · P   contribution of global pair distinctiveness
+```
+
+Changing `α` or `β` recalculates the current weight distribution, its mean and
+standard deviation, every edge Z value, and the visible node/edge set. This is
+therefore a **re-ranking observation**, not a linear opacity or visibility
+slider.
+
+### Distribution and retention panels
+
+The main control panel displays the current score distribution, mean, current
+Z threshold, and selected tail. `Retention` opens a companion panel showing:
+
+- edge retention;
+- node retention;
+- the current observation point;
+- the Z position of the maximum node-minus-edge retention gap.
+
+The observation confirmed that Pair Pack Distribution (PPD) already appears
+under `G` alone (`α=0`, `β=0`). Thus `C` and `P` are not required to create
+PPD. The max node-edge gap can be used as a data-driven candidate observation
+window in which many edges have been removed while comparatively many nodes
+remain available.
+
+### POS composition panel
+
+`POS` opens a live ingredient table for the currently visible nodes. The POS
+field is configurable and `tests/tools/pos.tsv` supplies human-readable POS
+labels. POS codes are shown with stable pastel backgrounds so changes in rank
+and composition can be inspected visually while `Z`, `α`, and `β` move.
+
+The weighting itself does **not** use POS. POS is inspected only after the
+network has been filtered. This distinction is deliberate:
+
+```text
+POS is observed, not imposed.
+```
+
+The panel therefore serves as a linguistic readout of a category-blind
+network filter rather than a stop-word or POS-specific weighting rule.
+
+### C support diagnostic
+
+`C support` compares the current `α` condition with `α=0` at the same `β` and
+Z. For every relevant node it reports:
+
+```text
+node        visible node
+POS         configured POS label
+ΣΔW         summed raw C-derived support from currently visible incident edges
+edges       number of currently visible C-supporting incident edges
+status      recruited / retained / lost
+```
+
+Here
+
+$$
+\Delta W_C(e)
+=
+W_{\alpha,\beta}(e)-W_{0,\beta}(e),
+$$
+
+and node-level support is inspected as
+
+$$
+A_C(t)
+=
+\sum_{e\ni t,\;Z(e)\ge Z_{current}}
+\Delta W_C(e).
+$$
+
+Clicking a node row expands the strongest supporting incident edges and shows
+the partner node, `ΔW`, `ctf`, and current Z. The purpose is diagnostic: it
+shows **how C-derived edge amplification propagates to node recruitment**.
+
+A high-Z observation of `春` with `β=1` produced a clear sequence as `α`
+increased. No C-supported recruitment appeared through about `α=.60`.
+At `.61`, `春日野–若い` appeared; at `.62`, `春日野–葉っぱ` was added; at
+`.65`, `若い–葉っぱ` closed the local triangle; later independent components
+appeared, multi-edge recruitment increased local density, and eventually
+previously visible nodes were displaced. Near `α=.98`, the thematic node `春`
+re-entered the high-Z region. At `α=1`, the high-Z node set was effectively
+re-ranked into a different composition relative to the `α=0` baseline.
+
+This observation motivates the current working interpretation:
+
+```text
+G   baseline specificity landscape
+C   local recurrence viewer
+P   global distinctiveness viewer
+Z   relative recognition coordinate
+PPD useful filtration window for observation
+```
+
+`C` is therefore more than a uniform amplifier. It is an edge-level local
+recurrence operator whose differential amplification can cause component
+birth, growth, closure, competitive displacement, and high-Z takeover after
+re-standardization. A hard IDF gate would suppress some low-IDF endpoint
+recruitment, but that would be a patch rather than an explanation of this
+mechanism.
+
+These browser tools are observational. `cw` remains responsible for supplying
+the statistical ingredients, while `emit`/D3 remain responsible for display,
+interaction, and browser-side recomputation.
 
 ## Input data
 
@@ -545,11 +683,21 @@ emit-d3.config.json      browser-side source-display configuration
 emit-d3.js               reusable renderer
 emit-d3.css              appearance rules
 emit-slider.js           Z-threshold visibility control
+emit-weight.js           α/β weighting and score/Z recomputation
+emit-retention.js        edge/node retention and max n-e gap panel
+emit-pos.js              live POS ingredient table
+emit-c-support.js        C-derived edge-support diagnostic
 ```
 
 The interactive viewer supports:
 
 - Z-threshold filtering with the slider;
+- continuous `α(C)` and `β(P)` weighting controls;
+- score-distribution and Z recomputation after weight changes;
+- edge/node retention curves and the maximum node-edge gap;
+- live POS composition for currently visible nodes;
+- C-support comparison against `α=0` at the same `β` and Z;
+- expandable per-node C-supporting edge details;
 - edge click -> source texts for the edge's `unit_ids`;
 - node click -> source texts collected from the node's currently visible edges;
 - multiple source-text candidates when a relation occurs in multiple units.
@@ -571,8 +719,9 @@ example:
 }
 ```
 
-The slider changes visibility only. It does not recalculate CW, Z, ranks, the
-distribution, or graph geometry.
+The Z slider changes the current filtration threshold. The α/β controls are
+different: they recompute the weighting landscape and therefore can change
+edge ranks, Z values, visible components, and node composition.
 
 ## Self-contained Kokinshu browser example
 
@@ -681,8 +830,9 @@ A reproducible analysis should preserve at least:
 8. every `grep`, `awk`, `sort`, or shell-script condition;
 9. the `emit` configuration;
 10. the browser-side D3 configuration when applicable;
-11. the final visualization or table;
-12. preferably, the command script that generated the result.
+11. the selected `Z`, `α`, and `β` observation conditions when applicable;
+12. the final visualization or table;
+13. preferably, the command script that generated the result.
 
 The command line itself is a compact research record. For example:
 
