@@ -1,0 +1,103 @@
+/* cw-tools POS composition observation panel */
+
+#emit-pos-toggle {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid #999;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+#emit-pos-toggle:hover,
+#emit-pos-toggle[aria-pressed="true"] {
+  background: #f2f2f2;
+}
+
+#emit-pos-panel {
+  position: absolute;
+  top: 0.75rem;
+  left: calc(0.75rem + 2 * (min(21rem, calc(100vw - 1.5rem)) + 0.75rem));
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(18rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 1.5rem);
+  overflow: auto;
+  padding: 0.75rem 0.85rem 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(3px);
+}
+
+#emit-pos-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+#emit-pos-header strong {
+  font-size: 1.05rem;
+}
+
+#emit-pos-value {
+  color: #555;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#emit-pos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#emit-pos-table th,
+#emit-pos-table td {
+  padding: 0.18rem 0.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+#emit-pos-table thead th {
+  color: #555;
+  font-weight: 600;
+  text-align: right;
+}
+
+#emit-pos-table thead th:first-child,
+#emit-pos-table tbody th {
+  text-align: left;
+}
+
+#emit-pos-table tbody th {
+  font-weight: 500;
+}
+
+#emit-pos-table tbody td {
+  text-align: right;
+}
+
+@media (max-width: 70rem) {
+  #emit-pos-panel {
+    top: auto;
+    right: 0.4rem;
+    bottom: 0.4rem;
+    left: auto;
+    width: min(18rem, calc(100vw - 0.8rem));
+    max-height: 45vh;
+  }
+}
+
+@media (max-width: 46rem) {
+  #emit-pos-panel {
+    right: 0.4rem;
+    bottom: 0.4rem;
+    width: calc(100vw - 0.8rem);
+  }
+}
