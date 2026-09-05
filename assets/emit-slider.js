@@ -24,7 +24,12 @@
     throw new Error("emit-slider.js could not find the required slider controls");
   }
 
-  const zValues = data.links.map((link) => Number(link.z)).filter((value) => Number.isFinite(value));
+  let dataMin = 0;
+  let dataMax = 0;
+  let sliderStep = 0.01;
+  let decimals = 2;
+  let distributionView = null;
+  let landscapeVersion = 0;
 
   function formatCount(visible, total, label) {
     const percent = total > 0 ? (visible / total) * 100 : 0;
@@ -41,30 +46,6 @@
     countOutput.replaceChildren(edgeLine, nodeLine);
   }
 
-  if (zValues.length === 0) {
-    slider.disabled = true;
-    valueOutput.textContent = "no Z data";
-    setCountOutput(0, 0);
-    return;
-  }
-
-  const dataMin = Math.min(...zValues);
-  const dataMax = Math.max(...zValues);
-  const dataSpan = dataMax - dataMin;
-  const sliderStep = niceStep(dataSpan === 0 ? Math.max(1, Math.abs(dataMin)) / 100 : dataSpan / 200);
-  const decimals = decimalsForStep(sliderStep);
-
-  slider.min = String(dataMin);
-  slider.max = String(dataMax);
-  slider.step = String(sliderStep);
-  slider.value = String(dataMin);
-  slider.disabled = dataSpan === 0;
-
-  if (minOutput) minOutput.textContent = formatNumber(dataMin);
-  if (maxOutput) maxOutput.textContent = formatNumber(dataMax);
-
-  const distributionView = buildDistribution(distribution, zValues, dataMin, dataMax);
-
   function niceStep(value) {
     if (!Number.isFinite(value) || value <= 0) return 0.01;
     const exponent = 10 ** Math.floor(Math.log10(value));
@@ -79,6 +60,7 @@
   }
 
   function formatNumber(value) {
+    if (!Number.isFinite(value)) return "NA";
     const fixed = Number(value).toFixed(decimals);
     return fixed.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
   }
@@ -95,34 +77,20 @@
     return Math.max(1, Math.ceil(1 + Math.log2(values.length)));
   }
 
-  function getBinCount(values, minimum, maximum, method = "sturges") {
-    switch (method) {
-      case "sturges":
-      default:
-        return sturgesBinCount(values);
-    }
-  }
-
-  // Catmull-Rom spline path generator for SVG
   function catmullRomPath(points, tension = 1) {
     if (points.length < 2) return "";
-
     let d = `M ${points[0].x} ${points[0].y}`;
-
     for (let i = 0; i < points.length - 1; i++) {
       const p0 = points[Math.max(0, i - 1)];
       const p1 = points[i];
       const p2 = points[i + 1];
       const p3 = points[Math.min(points.length - 1, i + 2)];
-
       const c1x = p1.x + ((p2.x - p0.x) / 6) * tension;
       const c1y = p1.y + ((p2.y - p0.y) / 6) * tension;
       const c2x = p2.x - ((p3.x - p1.x) / 6) * tension;
       const c2y = p2.y - ((p3.y - p1.y) / 6) * tension;
-
       d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
     }
-
     return d;
   }
 
@@ -136,8 +104,9 @@
     const domainPadding = minimum === maximum ? Math.max(0.5, Math.abs(minimum) * 0.05) : 0;
     const domainMin = minimum - domainPadding;
     const domainMax = maximum + domainPadding;
-    const binCount = getBinCount(values, minimum, maximum);
-    const binWidth = (domainMax - domainMin) / binCount;
+    const binCount = sturgesBinCount(values);
+    const span = domainMax - domainMin || 1;
+    const binWidth = span / binCount;
     const bins = Array.from({ length: binCount }, () => 0);
 
     for (const value of values) {
@@ -147,9 +116,8 @@
     }
 
     const maxCount = Math.max(...bins, 1);
-    const x = (value) => margin.left + ((value - domainMin) / (domainMax - domainMin)) * innerWidth;
+    const x = (value) => margin.left + ((value - domainMin) / span) * innerWidth;
     const y = (count) => baseline - (count / maxCount) * innerHeight;
-
     const smoothPoints = bins.map((count, index) => ({
       x: margin.left + ((index + 0.5) / binCount) * innerWidth,
       y: y(count),
@@ -183,52 +151,38 @@
     svg.append(defs);
 
     svg.append(svgElement("path", { d: pathData, class: "emit-distribution-base" }));
-
-    svg.append(
-      svgElement("path", {
-        d: pathData,
-        class: "emit-distribution-selected",
-        "clip-path": `url(#${clipId})`,
-      }),
-    );
-
-    svg.append(
-      svgElement("path", {
-        d: catmullRomPath(smoothPoints),
-        class: "emit-distribution-smooth",
-      }),
-    );
-
-    svg.append(
-      svgElement("line", {
-        x1: margin.left,
-        y1: baseline,
-        x2: width - margin.right,
-        y2: baseline,
-        class: "emit-distribution-axis",
-      }),
-    );
+    svg.append(svgElement("path", {
+      d: pathData,
+      class: "emit-distribution-selected",
+      "clip-path": `url(#${clipId})`,
+    }));
+    svg.append(svgElement("path", {
+      d: catmullRomPath(smoothPoints),
+      class: "emit-distribution-smooth",
+    }));
+    svg.append(svgElement("line", {
+      x1: margin.left,
+      y1: baseline,
+      x2: width - margin.right,
+      y2: baseline,
+      class: "emit-distribution-axis",
+    }));
 
     if (domainMin <= 0 && domainMax >= 0) {
       const zeroX = x(0);
-
-      svg.append(
-        svgElement("line", {
-          x1: zeroX,
-          y1: margin.top,
-          x2: zeroX,
-          y2: baseline,
-          class: "emit-distribution-zero",
-        }),
-      );
-
+      svg.append(svgElement("line", {
+        x1: zeroX,
+        y1: margin.top,
+        x2: zeroX,
+        y2: baseline,
+        class: "emit-distribution-zero",
+      }));
       const zeroLabel = svgElement("text", {
         x: zeroX,
         y: height - 6,
         class: "emit-distribution-label",
         "text-anchor": "middle",
       });
-
       zeroLabel.textContent = "0";
       svg.append(zeroLabel);
     }
@@ -284,7 +238,6 @@
       const element = document.getElementById(link.element_id);
       if (element) element.classList.toggle("is-hidden", !visible);
       if (!visible) continue;
-
       visibleEdges++;
       connected.add(endpointId(link.source));
       connected.add(endpointId(link.target));
@@ -300,7 +253,7 @@
 
     valueOutput.textContent = `Z ≥ ${formatNumber(threshold)}`;
     setCountOutput(visibleEdges, visibleNodes);
-    distributionView.update(threshold);
+    if (distributionView) distributionView.update(threshold);
 
     const detail = {
       threshold,
@@ -308,15 +261,68 @@
       totalEdges: data.links.length,
       visibleNodes,
       totalNodes: data.nodes.length,
+      dataMin,
+      dataMax,
+      landscapeVersion,
     };
     globalThis.dispatchEvent(new CustomEvent("emit-z-change", { detail }));
     return detail;
   }
 
   function setThreshold(value) {
-    const threshold = Math.max(dataMin, Math.min(dataMax, Number(value)));
+    const numeric = Number(value);
+    const fallback = Number.isFinite(dataMin) ? dataMin : 0;
+    const threshold = Math.max(dataMin, Math.min(dataMax, Number.isFinite(numeric) ? numeric : fallback));
     slider.value = String(threshold);
     return applyThreshold(threshold);
+  }
+
+  function refreshLandscape(options = {}) {
+    const preserveThreshold = options.preserveThreshold !== false;
+    const previous = Number(slider.value);
+    const zValues = data.links
+      .map((link) => Number(link.z))
+      .filter((value) => Number.isFinite(value));
+
+    landscapeVersion++;
+
+    if (zValues.length === 0) {
+      dataMin = 0;
+      dataMax = 0;
+      slider.disabled = true;
+      valueOutput.textContent = "no Z data";
+      setCountOutput(0, 0);
+      distribution.replaceChildren();
+      globalThis.dispatchEvent(new CustomEvent("emit-z-landscape-change", {
+        detail: { dataMin, dataMax, landscapeVersion },
+      }));
+      return null;
+    }
+
+    dataMin = Math.min(...zValues);
+    dataMax = Math.max(...zValues);
+    const span = dataMax - dataMin;
+    sliderStep = niceStep(span === 0 ? Math.max(1, Math.abs(dataMin)) / 100 : span / 200);
+    decimals = decimalsForStep(sliderStep);
+
+    slider.min = String(dataMin);
+    slider.max = String(dataMax);
+    slider.step = String(sliderStep);
+    slider.disabled = span === 0;
+    if (minOutput) minOutput.textContent = formatNumber(dataMin);
+    if (maxOutput) maxOutput.textContent = formatNumber(dataMax);
+
+    distributionView = buildDistribution(distribution, zValues, dataMin, dataMax);
+
+    let threshold = dataMin;
+    if (preserveThreshold && Number.isFinite(previous)) {
+      threshold = Math.max(dataMin, Math.min(dataMax, previous));
+    }
+
+    globalThis.dispatchEvent(new CustomEvent("emit-z-landscape-change", {
+      detail: { dataMin, dataMax, threshold, landscapeVersion },
+    }));
+    return setThreshold(threshold);
   }
 
   slider.addEventListener("input", () => setThreshold(slider.value));
@@ -324,17 +330,19 @@
     resetButton.addEventListener("click", () => setThreshold(dataMin));
   }
 
-  setThreshold(dataMin);
-
   globalThis.emitSlider = Object.freeze({
     slider,
     distribution,
-    dataMin,
-    dataMax,
-    step: sliderStep,
     setThreshold,
+    refreshLandscape,
     reset() {
       return setThreshold(dataMin);
     },
+    get dataMin() { return dataMin; },
+    get dataMax() { return dataMax; },
+    get step() { return sliderStep; },
+    get landscapeVersion() { return landscapeVersion; },
   });
+
+  refreshLandscape({ preserveThreshold: false });
 })();
