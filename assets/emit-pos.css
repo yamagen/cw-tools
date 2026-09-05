@@ -25,7 +25,7 @@
   left: calc(2.25rem + min(21rem, calc(100vw - 1.5rem)) + min(21rem, calc(100vw - 1.5rem)));
   z-index: 10;
   box-sizing: border-box;
-  width: min(18rem, calc(100vw - 1.5rem));
+  width: min(22rem, calc(100vw - 1.5rem));
   max-height: calc(100vh - 1.5rem);
   overflow: auto;
   padding: 0.75rem 0.85rem 0.8rem;
@@ -87,13 +87,36 @@
   text-align: right;
 }
 
+.emit-pos-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  box-sizing: border-box;
+  min-width: 100%;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  white-space: nowrap;
+}
+
+.emit-pos-code {
+  min-width: 2.2em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.emit-pos-label {
+  color: #333;
+  font-weight: 500;
+}
+
 @media (max-width: 70rem) {
   #emit-pos-panel {
     top: auto;
     right: 0.4rem;
     bottom: 0.4rem;
     left: auto;
-    width: min(18rem, calc(100vw - 0.8rem));
+    width: min(22rem, calc(100vw - 0.8rem));
     max-height: 45vh;
   }
 }
