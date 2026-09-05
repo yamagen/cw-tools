@@ -6,6 +6,7 @@
   },
   "observation": {
     "pos_field": 3,
-    "pos_title": "POS composition"
+    "pos_title": "POS composition",
+    "pos_labels_path": "../tests/tools/pos.tsv"
   }
 }
