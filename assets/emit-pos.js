@@ -19,6 +19,37 @@
 
   let posField = 3;
   let panelTitle = "POS composition";
+  let posLabelsPath = "../tests/tools/pos.tsv";
+  const posLabels = new Map();
+
+  function parsePosLabels(text) {
+    posLabels.clear();
+    for (const line of String(text).split(/\r?\n/)) {
+      if (!line.trim() || line.trimStart().startsWith("#")) continue;
+      const tab = line.indexOf("\t");
+      if (tab < 0) continue;
+      const code = line.slice(0, tab).trim();
+      const label = line.slice(tab + 1).trim();
+      if (code) posLabels.set(code, label || code);
+    }
+  }
+
+  function loadPosLabels() {
+    return fetch(posLabelsPath, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.text();
+      })
+      .then((text) => {
+        parsePosLabels(text);
+        update();
+        return posLabels;
+      })
+      .catch(() => {
+        update();
+        return posLabels;
+      });
+  }
 
   const configPromise = fetch("emit-d3.config.json")
     .then((response) => {
@@ -34,14 +65,17 @@
       if (typeof observation.pos_title === "string" && observation.pos_title.trim()) {
         panelTitle = observation.pos_title.trim();
       }
+      if (typeof observation.pos_labels_path === "string" && observation.pos_labels_path.trim()) {
+        posLabelsPath = observation.pos_labels_path.trim();
+      }
       titleElement.textContent = panelTitle;
       update();
-      return config;
+      return loadPosLabels();
     })
     .catch(() => {
       titleElement.textContent = panelTitle;
       update();
-      return null;
+      return loadPosLabels();
     });
 
   function tokenFields(node) {
@@ -67,6 +101,17 @@
     return total > 0 ? `${((count / total) * 100).toFixed(1)}%` : "0.0%";
   }
 
+  function pastelFor(code) {
+    if (code === "(unknown)") return { background: "hsl(0 0% 92%)", border: "hsl(0 0% 78%)" };
+    let hash = 0;
+    for (const ch of String(code)) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
+    const hue = hash % 360;
+    return {
+      background: `hsl(${hue} 58% 91%)`,
+      border: `hsl(${hue} 38% 76%)`,
+    };
+  }
+
   function update() {
     const counts = new Map();
     let visibleNodes = 0;
@@ -82,7 +127,7 @@
       const countDifference = right[1] - left[1];
       return countDifference !== 0
         ? countDifference
-        : left[0].localeCompare(right[0], "ja");
+        : left[0].localeCompare(right[0], "ja", { numeric: true });
     });
 
     body.replaceChildren();
@@ -91,9 +136,22 @@
       const posCell = document.createElement("th");
       const countCell = document.createElement("td");
       const percentCell = document.createElement("td");
+      const tag = document.createElement("span");
+      const code = document.createElement("span");
+      const label = document.createElement("span");
+      const colors = pastelFor(pos);
 
       posCell.scope = "row";
-      posCell.textContent = pos;
+      tag.className = "emit-pos-tag";
+      tag.style.backgroundColor = colors.background;
+      tag.style.borderColor = colors.border;
+      code.className = "emit-pos-code";
+      code.textContent = pos;
+      label.className = "emit-pos-label";
+      label.textContent = posLabels.get(pos) || "";
+      tag.append(code, label);
+      posCell.append(tag);
+
       countCell.textContent = String(count);
       percentCell.textContent = formatPercent(count, visibleNodes);
       row.append(posCell, countCell, percentCell);
@@ -101,7 +159,7 @@
     }
 
     valueOutput.textContent = `${visibleNodes} nodes · field ${posField}`;
-    return { visibleNodes, posField, counts };
+    return { visibleNodes, posField, counts, posLabels };
   }
 
   toggleButton.addEventListener("click", () => {
@@ -120,6 +178,8 @@
   globalThis.emitPos = Object.freeze({
     panel,
     update,
+    posLabels,
     get posField() { return posField; },
+    get posLabelsPath() { return posLabelsPath; },
   });
 })();
