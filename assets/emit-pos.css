@@ -22,7 +22,7 @@
 #emit-pos-panel {
   position: absolute;
   top: 0.75rem;
-  left: calc(2.25rem + min(21rem, calc(100vw - 1.5rem)) + min(21rem, calc(100vw - 1.5rem)));
+  left: calc(2.25rem + min(24rem, calc(100vw - 1.5rem)) + min(24rem, calc(100vw - 1.5rem)));
   z-index: 10;
   box-sizing: border-box;
   width: min(22rem, calc(100vw - 1.5rem));
