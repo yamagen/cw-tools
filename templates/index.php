@@ -239,6 +239,7 @@ $params = [
           globalThis.emitData = graph;
           statusElement.textContent = `${graph.nodes.length} nodes · ${graph.links.length} edges`;
 
+          await loadScript("../assets/emit-layout-kamada-kawai.js");
           await loadScript("../assets/emit-d3.js");
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
