@@ -174,6 +174,59 @@
     }
   }
 
+  function nodeCollisionRadius(node, options) {
+    const fontSize = Math.max(1, Number(node.font_size) || 12);
+    const circleRadius = Math.max(9, fontSize * 0.7);
+    const label = node.label == null ? "" : String(node.label);
+    // Most labels here are Japanese. Treat each character as roughly one em wide,
+    // then use half the estimated label width because this is a radial bound.
+    const labelRadius = (fontSize * Math.max(1, [...label].length)) / 2;
+    return Math.max(circleRadius, labelRadius) + options.overlap_padding;
+  }
+
+  function removeOverlaps(component, nodes, options) {
+    if (component.length <= 1 || options.overlap !== false) return;
+
+    const radii = component.map((index) => nodeCollisionRadius(nodes[index], options));
+    const iterations = options.overlap_iterations;
+
+    for (let pass = 0; pass < iterations; pass++) {
+      let moved = false;
+
+      for (let a = 0; a < component.length; a++) {
+        const nodeA = nodes[component[a]];
+        for (let b = a + 1; b < component.length; b++) {
+          const nodeB = nodes[component[b]];
+          let dx = nodeB.x - nodeA.x;
+          let dy = nodeB.y - nodeA.y;
+          let distance = Math.hypot(dx, dy);
+          const minimum = radii[a] + radii[b];
+          if (distance >= minimum) continue;
+
+          // Deterministic tiny direction for coincident nodes.
+          if (distance < 1e-9) {
+            const angle = (((a + 1) * 131 + (b + 1) * 197) % 360) * (Math.PI / 180);
+            dx = Math.cos(angle);
+            dy = Math.sin(angle);
+            distance = 1;
+          }
+
+          const overlap = minimum - distance;
+          const shift = overlap * 0.5 + 0.01;
+          const ux = dx / distance;
+          const uy = dy / distance;
+          nodeA.x -= ux * shift;
+          nodeA.y -= uy * shift;
+          nodeB.x += ux * shift;
+          nodeB.y += uy * shift;
+          moved = true;
+        }
+      }
+
+      if (!moved) break;
+    }
+  }
+
   function componentBox(component, nodes) {
     let minX = Infinity;
     let minY = Infinity;
@@ -274,11 +327,15 @@
       inner_iterations: Math.max(1, Math.floor(Number(options.inner_iterations) || 80)),
       component_padding: Math.max(0, Number(options.component_padding) || 60),
       yield_every: Math.max(0, Math.floor(Number(options.yield_every) || 8)),
+      overlap: options.overlap === undefined ? false : Boolean(options.overlap),
+      overlap_padding: Math.max(0, Number(options.overlap_padding) || 4),
+      overlap_iterations: Math.max(1, Math.floor(Number(options.overlap_iterations) || 80)),
     };
 
     const { components, adjacency } = connectedComponents(nodes, links);
     for (const component of components) {
       await optimizeComponent(component, adjacency, nodes, resolved);
+      removeOverlaps(component, nodes, resolved);
     }
     packComponents(
       components,
