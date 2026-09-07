@@ -28,7 +28,7 @@ The Kamada–Kawai implementation is in:
 assets/emit-layout-kamada-kawai.js
 ```
 
-It uses unweighted all-pairs shortest-path distances within each connected component, converts graph-theoretic distance to ideal spring length, minimizes the Kamada–Kawai energy with Newton updates, packs disconnected components, and writes the resulting `x` / `y` coordinates back to the D3 nodes.
+It uses unweighted all-pairs shortest-path distances within each connected component, converts graph-theoretic distance to ideal spring length, minimizes the Kamada–Kawai energy with Newton updates, removes node/label overlaps when requested, packs disconnected components, and writes the resulting `x` / `y` coordinates back to the D3 nodes.
 
 The minimal configuration is deliberately simple:
 
@@ -37,6 +37,19 @@ The minimal configuration is deliberately simple:
   "layout": "kamada-kawai"
 }
 ```
+
+Overlap removal follows the Graphviz-style meaning of `overlap=false`: the Kamada–Kawai coordinates are computed first, then overlapping nodes are displaced only as much as needed before component packing.
+
+```json
+{
+  "layout": "kamada-kawai",
+  "layout_options": {
+    "overlap": false
+  }
+}
+```
+
+`overlap=false` is the browser default. Set `overlap=true` to preserve the raw Kamada–Kawai coordinates even when node or label bounds overlap.
 
 Optional parameters may be supplied with `layout_options`:
 
@@ -50,12 +63,17 @@ Optional parameters may be supplied with `layout_options`:
     "iterations": 300,
     "inner_iterations": 80,
     "component_padding": 60,
-    "yield_every": 8
+    "yield_every": 8,
+    "overlap": false,
+    "overlap_padding": 4,
+    "overlap_iterations": 80
   }
 }
 ```
 
-These defaults are intended as practical browser defaults, not as a claim of pixel-for-pixel equivalence with Graphviz. The implementation follows the Kamada–Kawai energy model; Graphviz may differ in initialization, disconnected-component handling, scaling, and implementation details.
+The overlap pass estimates a collision radius from both the node circle and the rendered label length. It is a coordinate-preserving post-process, not a return to D3 force simulation.
+
+These defaults are intended as practical browser defaults, not as a claim of pixel-for-pixel equivalence with Graphviz. The implementation follows the Kamada–Kawai energy model; Graphviz may differ in initialization, overlap removal details, disconnected-component handling, scaling, and implementation details.
 
 The `Reheat` button reruns the selected layout. Under Kamada–Kawai it therefore performs a deterministic relayout rather than restarting a D3 force simulation.
 
