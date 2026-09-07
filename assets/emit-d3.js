@@ -25,8 +25,22 @@
   const tip = tipElement ? d3.select(tipElement) : null;
   const nodes = data.nodes.map((node) => ({ ...node }));
   const links = data.links.map((link) => ({ ...link }));
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+
+  function endpointId(endpoint) {
+    return typeof endpoint === "object" && endpoint !== null ? endpoint.id : endpoint;
+  }
+
+  for (const link of links) {
+    const source = nodeById.get(endpointId(link.source));
+    const target = nodeById.get(endpointId(link.target));
+    if (source) link.source = source;
+    if (target) link.target = target;
+  }
 
   const defaultViewConfig = {
+    layout: "force",
+    layout_options: {},
     source: {
       path: "emit-texts.json",
       title: "Source texts",
@@ -37,6 +51,9 @@
   let viewConfig = defaultViewConfig;
   let sourceTexts = null;
   let sourceTextsError = null;
+  let simulation = null;
+  let activeLayout = "force";
+  let layoutRunToken = 0;
 
   const viewConfigPromise = fetch("emit-d3.config.json")
     .then((response) => {
@@ -47,6 +64,10 @@
       viewConfig = {
         ...defaultViewConfig,
         ...config,
+        layout_options: {
+          ...defaultViewConfig.layout_options,
+          ...(config && typeof config.layout_options === "object" ? config.layout_options : {}),
+        },
         source: {
           ...defaultViewConfig.source,
           ...(config && typeof config.source === "object" ? config.source : {}),
@@ -148,10 +169,6 @@
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
     .text((node) => node.label);
-
-  function endpointId(endpoint) {
-    return typeof endpoint === "object" ? endpoint.id : endpoint;
-  }
 
   function showTip(event, text) {
     if (!tip) return;
@@ -302,51 +319,145 @@
     nodeGroups.attr("transform", (node) => `translate(${node.x},${node.y})`);
   }
 
-  const simulation = d3
-    .forceSimulation(nodes)
-    .force(
-      "link",
-      d3
-        .forceLink(links)
-        .id((node) => node.id)
-        .distance((link) => {
-          const s = Number(link.source.degree ?? 0);
-          const t = Number(link.target.degree ?? 0);
-          const maxDegree = Math.max(s, t);
+  function dispatchLayoutReady(extra = {}) {
+    globalThis.dispatchEvent(
+      new CustomEvent("emit-layout-ready", {
+        detail: { data, nodes, links, layout: activeLayout, ...extra },
+      }),
+    );
+  }
 
-          if (maxDegree >= 12) return 50;
-          if (maxDegree >= 3) return 30;
-          return 10;
-        }),
-    )
-    .force("charge", d3.forceManyBody().strength(-50))
-    .force("x", d3.forceX(width() / 1.4).strength(0.02))
-    .force("y", d3.forceY(height() / 2).strength(0.04))
-    .on("tick", ticked)
-    .on("end", () => {
-      for (const node of nodes) {
-        node.fx = node.x;
-        node.fy = node.y;
-      }
-      globalThis.dispatchEvent(
-        new CustomEvent("emit-layout-ready", {
-          detail: { data, nodes, links },
-        }),
-      );
+  function normalizeLayout(config) {
+    const raw = config?.layout;
+    if (typeof raw === "string") {
+      return { type: raw, options: config.layout_options || {} };
+    }
+    if (raw && typeof raw === "object") {
+      return {
+        type: typeof raw.type === "string" ? raw.type : "force",
+        options: { ...(config.layout_options || {}), ...raw },
+      };
+    }
+    return { type: "force", options: config?.layout_options || {} };
+  }
+
+  function stopCurrentLayout() {
+    layoutRunToken++;
+    if (simulation) {
+      simulation.stop();
+      simulation = null;
+    }
+  }
+
+  function startForceLayout(options = {}) {
+    stopCurrentLayout();
+    activeLayout = "force";
+    for (const node of nodes) {
+      node.fx = null;
+      node.fy = null;
+    }
+
+    const charge = Number.isFinite(Number(options.charge)) ? Number(options.charge) : -50;
+    const xStrength = Number.isFinite(Number(options.x_strength)) ? Number(options.x_strength) : 0.02;
+    const yStrength = Number.isFinite(Number(options.y_strength)) ? Number(options.y_strength) : 0.04;
+
+    simulation = d3
+      .forceSimulation(nodes)
+      .force(
+        "link",
+        d3
+          .forceLink(links)
+          .id((node) => node.id)
+          .distance((link) => {
+            const s = Number(link.source.degree ?? 0);
+            const t = Number(link.target.degree ?? 0);
+            const maxDegree = Math.max(s, t);
+            if (maxDegree >= 12) return 50;
+            if (maxDegree >= 3) return 30;
+            return 10;
+          }),
+      )
+      .force("charge", d3.forceManyBody().strength(charge))
+      .force("x", d3.forceX(width() / 1.4).strength(xStrength))
+      .force("y", d3.forceY(height() / 2).strength(yStrength))
+      .on("tick", ticked)
+      .on("end", () => {
+        for (const node of nodes) {
+          node.fx = node.x;
+          node.fy = node.y;
+        }
+        dispatchLayoutReady();
+      });
+  }
+
+  async function startKamadaKawai(options = {}) {
+    stopCurrentLayout();
+    activeLayout = "kamada-kawai";
+    const token = layoutRunToken;
+    const engine = globalThis.emitLayouts?.kamadaKawai;
+
+    if (typeof engine !== "function") {
+      console.warn("Kamada-Kawai layout engine is unavailable; falling back to force layout");
+      startForceLayout(options);
+      return;
+    }
+
+    const result = await engine(nodes, links, {
+      width: width(),
+      height: height(),
+      ...options,
     });
+    if (token !== layoutRunToken || activeLayout !== "kamada-kawai") return;
+    ticked();
+    dispatchLayoutReady({ result });
+  }
+
+  function runLayout(config = viewConfig) {
+    const layout = normalizeLayout(config);
+    const type = String(layout.type || "force").toLowerCase();
+    if (type === "kamada-kawai" || type === "kamada_kawai" || type === "kk") {
+      return startKamadaKawai(layout.options);
+    }
+    startForceLayout(layout.options);
+    return Promise.resolve();
+  }
 
   function dragStarted(event, node) {
     node.fx = node.x;
     node.fy = node.y;
-    if (!event.active) simulation.alphaTarget(0.12).restart();
+    if (activeLayout === "force" && simulation && !event.active) {
+      simulation.alphaTarget(0.12).restart();
+    }
   }
 
   function dragged(event, node) {
+    node.x = event.x;
+    node.y = event.y;
     node.fx = event.x;
     node.fy = event.y;
+    ticked();
   }
 
-  function releaseNodes() {
+  function dragEnded(event, node) {
+    node.x = event.x;
+    node.y = event.y;
+    node.fx = event.x;
+    node.fy = event.y;
+    if (activeLayout === "force" && simulation && !event.active) {
+      simulation.alphaTarget(0);
+    }
+    ticked();
+  }
+
+  function reheatOrRelayout() {
+    if (activeLayout === "kamada-kawai") {
+      void runLayout(viewConfig);
+      return;
+    }
+    if (!simulation) {
+      void runLayout(viewConfig);
+      return;
+    }
     nodes.forEach((node) => {
       node.fx = null;
       node.fy = null;
@@ -355,16 +466,7 @@
   }
 
   const reheatButton = document.getElementById("emit-reheat");
-  if (reheatButton) reheatButton.addEventListener("click", releaseNodes);
-
-  function dragEnded(event, node) {
-    node.x = event.x;
-    node.y = event.y;
-    node.fx = event.x;
-    node.fy = event.y;
-    if (!event.active) simulation.alphaTarget(0);
-    ticked();
-  }
+  if (reheatButton) reheatButton.addEventListener("click", reheatOrRelayout);
 
   globalThis.addEventListener("resize", updateViewBox);
 
@@ -376,8 +478,12 @@
     root,
     edgeGroups,
     nodeGroups,
-    simulation,
     showSources,
     visibleUnitIdsForNode,
+    runLayout,
+    get layout() { return activeLayout; },
+    get simulation() { return simulation; },
   });
+
+  viewConfigPromise.then((config) => runLayout(config));
 })();
