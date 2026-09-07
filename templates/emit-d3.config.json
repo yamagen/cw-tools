@@ -1,7 +1,8 @@
 {
   "layout": "kamada-kawai",
   "layout_options": {
-    "overlap": false
+    "overlap": false,
+    "edge_length": 48
   },
   "source": {
     "path": "emit-texts.json",
