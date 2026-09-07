@@ -28,9 +28,39 @@ The Kamada–Kawai implementation is in:
 assets/emit-layout-kamada-kawai.js
 ```
 
-It uses unweighted all-pairs shortest-path distances within each connected component, converts graph-theoretic distance to ideal spring length, minimizes the Kamada–Kawai energy with Newton updates, removes node/label overlaps when requested, packs disconnected components, and writes the resulting `x` / `y` coordinates back to the D3 nodes.
+The browser implementation is now deliberately modeled on the observable behavior of Graphviz `neato` with `mode=KK` rather than on D3 force tuning.
 
-The minimal configuration is deliberately simple:
+Its main stages are:
+
+```text
+shortest-path distance matrix
+        |
+        v
+Kamada-Kawai ideal distances
+(normalized by graph diameter)
+        |
+        v
+Newton optimization
+        |
+        v
+Graphviz-style overlap=false post-process
+(proximity / Delaunay, Prism-like)
+        |
+        v
+component packing
+        |
+        v
+final overlap check + centering
+        |
+        v
+D3 rendering
+```
+
+The distance model is unweighted graph-theoretic shortest path, corresponding to the default `model=shortpath` idea in `neato`. Ideal Euclidean lengths are scaled by the component graph diameter rather than using an unbounded `edge_length * distance` scale.
+
+Initialization is deterministic pseudo-random placement. This is closer to the default `neato` starting condition than the earlier circular initialization and remains repeatable from one browser load to the next.
+
+The minimal configuration remains:
 
 ```json
 {
@@ -38,7 +68,7 @@ The minimal configuration is deliberately simple:
 }
 ```
 
-Overlap removal follows the Graphviz-style meaning of `overlap=false`: the Kamada–Kawai coordinates are computed first, then overlapping nodes are displaced only as much as needed before component packing.
+### `overlap=false`
 
 ```json
 {
@@ -49,33 +79,54 @@ Overlap removal follows the Graphviz-style meaning of `overlap=false`: the Kamad
 }
 ```
 
-`overlap=false` is the browser default. Set `overlap=true` to preserve the raw Kamada–Kawai coordinates even when node or label bounds overlap.
+`overlap=false` is the browser default.
 
-Optional parameters may be supplied with `layout_options`:
+Modern Graphviz uses its Prism proximity-graph overlap-removal algorithm for `overlap=false` when Prism is available; older Graphviz versions and explicit `overlap=voronoi` use a Voronoi method. The browser implementation therefore uses a **Prism-like proximity pass**: an initial gentle scale-up is followed by repeated collision resolution along Delaunay-neighbor relations. A conservative final collision pass removes residual label/node overlaps while attempting to keep the Kamada–Kawai geometry dominant.
+
+This is not Graphviz source code and is not claimed to reproduce Graphviz pixel for pixel. It reproduces the relevant design principles in browser JavaScript: shortest-path KK geometry first, proximity-based overlap removal second, D3 rendering last.
+
+Optional parameters include:
 
 ```json
 {
   "layout": "kamada-kawai",
   "layout_options": {
-    "edge_length": 48,
+    "seed": 1,
     "spring_strength": 1,
-    "epsilon": 0.01,
-    "iterations": 300,
     "inner_iterations": 80,
+    "max_auto_iterations": 3000,
     "component_padding": 60,
     "yield_every": 8,
     "overlap": false,
     "overlap_padding": 4,
-    "overlap_iterations": 80
+    "overlap_iterations": 120,
+    "overlap_scaling": 4,
+    "overlap_damping": 0.75
   }
 }
 ```
 
-The overlap pass estimates a collision radius from both the node circle and the rendered label length. It is a coordinate-preserving post-process, not a return to D3 force simulation.
-
-These defaults are intended as practical browser defaults, not as a claim of pixel-for-pixel equivalence with Graphviz. The implementation follows the Kamada–Kawai energy model; Graphviz may differ in initialization, overlap removal details, disconnected-component handling, scaling, and implementation details.
+`edge_length`, `epsilon`, and `iterations` may also be supplied explicitly. If omitted, the browser uses diameter-normalized ideal edge length and graph-size-dependent stopping defaults inspired by `neato`'s KK behavior, with a browser-safe upper bound on automatic iterations.
 
 The `Reheat` button reruns the selected layout. Under Kamada–Kawai it therefore performs a deterministic relayout rather than restarting a D3 force simulation.
+
+## Why this matters for the Z slider
+
+The layout is computed from the full emitted relational graph; moving the Z slider changes visibility rather than recomputing force geometry. A stable shortest-path layout can therefore reveal successive graph-distance shells and attached subclusters as the threshold is lowered.
+
+For a hub such as `梅`, the intended observational behavior is:
+
+```text
+high Z       center / strongest relations
+   |
+   v
+lower Z      first ring of direct relations
+   |
+   v
+still lower  attached subclusters become visible
+```
+
+This makes it possible to distinguish a genuine structural transition in the filtered network from mere motion caused by a force simulation.
 
 ## Force layout
 
