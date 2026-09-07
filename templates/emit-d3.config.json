@@ -1,4 +1,5 @@
 {
+  "layout": "kamada-kawai",
   "source": {
     "path": "emit-texts.json",
     "title": "Source texts",
