@@ -26,17 +26,50 @@
     element.style.pointerEvents = "none";
   }
 
+  function isActiveElement(element) {
+    if (!element) return false;
+    if (element.classList.contains("is-hidden")) return false;
+    if (element.style.opacity === "0") return false;
+    return true;
+  }
+
+  function nodeHasActiveIncidentEdge(nodeId) {
+    for (const link of data.links) {
+      const sourceId = endpointId(link.source);
+      const targetId = endpointId(link.target);
+      if (sourceId !== nodeId && targetId !== nodeId) continue;
+      if (isActiveElement(document.getElementById(link.element_id))) return true;
+    }
+    return false;
+  }
+
   function makeNodeAndEdgesTransparent(nodeId) {
     const node = data.nodes.find((item) => item.id === nodeId);
     if (!node) return;
 
     makeTransparent(document.getElementById(node.element_id));
 
+    const affectedNeighbors = new Set();
+
     for (const link of data.links) {
       const sourceId = endpointId(link.source);
       const targetId = endpointId(link.target);
       if (sourceId !== nodeId && targetId !== nodeId) continue;
+
+      affectedNeighbors.add(sourceId === nodeId ? targetId : sourceId);
       makeTransparent(document.getElementById(link.element_id));
+    }
+
+    // A double-click means "remove this node from the current view". Nodes
+    // whose only currently visible connection was to that node should not be
+    // left floating as visual orphans. Prune only directly affected neighbors;
+    // this preserves unrelated components and the current Z-filtered view.
+    for (const neighborId of affectedNeighbors) {
+      if (neighborId === nodeId) continue;
+      if (nodeHasActiveIncidentEdge(neighborId)) continue;
+
+      const neighbor = data.nodes.find((item) => item.id === neighborId);
+      if (neighbor) makeTransparent(document.getElementById(neighbor.element_id));
     }
   }
 
