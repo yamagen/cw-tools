@@ -190,17 +190,36 @@
     void makeSnapshot();
   });
 
-  // Reset Z ends KK snapshot mode completely. It restores the coordinates from
-  // before the first KK snapshot, releases the KK floor, and then returns to
-  // the ordinary minimum-Z view. This makes another KK snapshot possible
-  // without reloading the page.
+  // Reset Z is a complete return to ordinary observation mode. Merely restoring
+  // saved coordinates leaves layout-engine state behind, which can make a
+  // second KK snapshot ineffective. Re-run the configured full-graph layout so
+  // Reset behaves like a lightweight reload without re-fetching the data.
   if (resetButton) {
     resetButton.addEventListener("click", (event) => {
       if (snapshotFloor === null) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      clearSnapshot({ restorePositions: true });
-      sliderApi.setThreshold(sliderApi.dataMin);
+
+      void (async () => {
+        if (running) return;
+        running = true;
+        button.disabled = true;
+        slider.disabled = true;
+        try {
+          clearSnapshot({ restorePositions: false });
+          if (typeof graph.runLayout === "function") {
+            await graph.runLayout();
+          } else {
+            restoreBaselinePositions();
+          }
+          restoreSliderMinimum();
+          sliderApi.setThreshold(sliderApi.dataMin);
+        } finally {
+          slider.disabled = false;
+          button.disabled = false;
+          running = false;
+        }
+      })();
     }, true);
   }
 
