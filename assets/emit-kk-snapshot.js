@@ -20,7 +20,6 @@
   }
 
   let snapshotFloor = null;
-  let baselinePositions = null;
   let running = false;
   let layoutOptionsPromise = null;
 
@@ -51,32 +50,8 @@
     if (minOutput) minOutput.textContent = formatThreshold(sliderApi.dataMin);
   }
 
-  function captureBaselinePositions() {
-    baselinePositions = graph.nodes.map((node) => ({
-      node,
-      x: node.x,
-      y: node.y,
-      fx: node.fx,
-      fy: node.fy,
-    }));
-  }
-
-  function restoreBaselinePositions() {
-    if (!baselinePositions) return;
-    for (const saved of baselinePositions) {
-      saved.node.x = saved.x;
-      saved.node.y = saved.y;
-      saved.node.fx = saved.fx;
-      saved.node.fy = saved.fy;
-    }
-    renderPositions();
-  }
-
-  function clearSnapshot(options = {}) {
-    const restorePositions = options.restorePositions !== false;
-    if (restorePositions) restoreBaselinePositions();
+  function clearSnapshot() {
     snapshotFloor = null;
-    baselinePositions = null;
     restoreSliderMinimum();
     setButtonState(false);
     globalThis.dispatchEvent(new CustomEvent("emit-kk-snapshot-clear"));
@@ -154,8 +129,6 @@
     const subgraph = visibleSubgraph(threshold);
     if (subgraph.links.length === 0 || subgraph.nodes.length === 0) return;
 
-    if (snapshotFloor === null) captureBaselinePositions();
-
     running = true;
     button.disabled = true;
     slider.disabled = true;
@@ -190,44 +163,18 @@
     void makeSnapshot();
   });
 
-  // Reset Z is a complete return to ordinary observation mode. Merely restoring
-  // saved coordinates leaves layout-engine state behind, which can make a
-  // second KK snapshot ineffective. Re-run the configured full-graph layout so
-  // Reset behaves like a lightweight reload without re-fetching the data.
+  // Reset Z is now deliberately a full viewer reset. Moving the Z slider is
+  // sufficient for ordinary threshold changes; Reset means "start over".
   if (resetButton) {
     resetButton.addEventListener("click", (event) => {
-      if (snapshotFloor === null) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-
-      void (async () => {
-        if (running) return;
-        running = true;
-        button.disabled = true;
-        slider.disabled = true;
-        try {
-          clearSnapshot({ restorePositions: false });
-          if (typeof graph.runLayout === "function") {
-            await graph.runLayout();
-          } else {
-            restoreBaselinePositions();
-          }
-          restoreSliderMinimum();
-          sliderApi.setThreshold(sliderApi.dataMin);
-        } finally {
-          slider.disabled = false;
-          button.disabled = false;
-          running = false;
-        }
-      })();
+      window.location.reload();
     }, true);
   }
 
-  // Changing alpha/beta rebuilds the Z landscape, so a KK snapshot made under
-  // the previous landscape is no longer a valid anchor. Restore the ordinary
-  // coordinates and release the snapshot floor.
   globalThis.addEventListener("emit-weight-change", () => {
-    if (snapshotFloor !== null) clearSnapshot({ restorePositions: true });
+    if (snapshotFloor !== null) clearSnapshot();
   });
 
   globalThis.emitKKSnapshot = Object.freeze({
