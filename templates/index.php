@@ -103,6 +103,7 @@ $params = [
         </div>
         <div id="emit-button-row">
           <button id="emit-reheat">Reheat</button>
+          <button id="emit-kk" type="button" aria-pressed="false" title="Recompute Kamada-Kawai for the currently visible Z-filtered graph">KK</button>
           <button id="emit-z-reset">Reset Z</button>
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
@@ -244,6 +245,7 @@ $params = [
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
           await loadScript("../assets/emit-weight.js");
+          await loadScript("../assets/emit-kk-snapshot.js");
           await loadScript("../assets/emit-retention.js");
           await loadScript("../assets/emit-pos.js");
           await loadScript("../assets/emit-c-support.js");
