@@ -139,9 +139,9 @@ svg.graph {
   text-align: right;
 }
 
-#emit-z-reset,
-#emit-reheat,
+#emit-button-row button,
 #emit-source-close {
+  box-sizing: border-box;
   padding: 0.2rem 0.55rem;
   border: 1px solid #999;
   border-radius: 0.35rem;
@@ -151,10 +151,19 @@ svg.graph {
   cursor: pointer;
 }
 
-#emit-z-reset:hover,
-#emit-reheat:hover,
+#emit-button-row button:hover,
 #emit-source-close:hover {
   background: #f2f2f2;
+}
+
+#emit-button-row button[aria-pressed="true"] {
+  background: #e2e2e2;
+  border-color: #777;
+}
+
+#emit-button-row button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .edge .edge-line {
