@@ -10,7 +10,6 @@
   }
 
   const button = document.getElementById("emit-kk");
-  const reheatButton = document.getElementById("emit-reheat");
   const resetButton = document.getElementById("emit-z-reset");
   const slider = sliderApi.slider;
   const minOutput = document.getElementById("emit-z-min");
@@ -21,6 +20,7 @@
   }
 
   let snapshotFloor = null;
+  let baselinePositions = null;
   let running = false;
   let layoutOptionsPromise = null;
 
@@ -51,8 +51,32 @@
     if (minOutput) minOutput.textContent = formatThreshold(sliderApi.dataMin);
   }
 
-  function clearSnapshot() {
+  function captureBaselinePositions() {
+    baselinePositions = graph.nodes.map((node) => ({
+      node,
+      x: node.x,
+      y: node.y,
+      fx: node.fx,
+      fy: node.fy,
+    }));
+  }
+
+  function restoreBaselinePositions() {
+    if (!baselinePositions) return;
+    for (const saved of baselinePositions) {
+      saved.node.x = saved.x;
+      saved.node.y = saved.y;
+      saved.node.fx = saved.fx;
+      saved.node.fy = saved.fy;
+    }
+    renderPositions();
+  }
+
+  function clearSnapshot(options = {}) {
+    const restorePositions = options.restorePositions !== false;
+    if (restorePositions) restoreBaselinePositions();
     snapshotFloor = null;
+    baselinePositions = null;
     restoreSliderMinimum();
     setButtonState(false);
     globalThis.dispatchEvent(new CustomEvent("emit-kk-snapshot-clear"));
@@ -130,6 +154,8 @@
     const subgraph = visibleSubgraph(threshold);
     if (subgraph.links.length === 0 || subgraph.nodes.length === 0) return;
 
+    if (snapshotFloor === null) captureBaselinePositions();
+
     running = true;
     button.disabled = true;
     slider.disabled = true;
@@ -164,30 +190,25 @@
     void makeSnapshot();
   });
 
-  // In KK snapshot mode Reset Z means "return to the KK anchor", not
-  // "restore edges that were absent when the snapshot was made".
+  // Reset Z ends KK snapshot mode completely. It restores the coordinates from
+  // before the first KK snapshot, releases the KK floor, and then returns to
+  // the ordinary minimum-Z view. This makes another KK snapshot possible
+  // without reloading the page.
   if (resetButton) {
     resetButton.addEventListener("click", (event) => {
       if (snapshotFloor === null) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      sliderApi.setThreshold(snapshotFloor);
+      clearSnapshot({ restorePositions: true });
+      sliderApi.setThreshold(sliderApi.dataMin);
     }, true);
   }
 
-  // Reheat keeps its historical meaning: leave the snapshot and rerun the
-  // ordinary configured layout. The existing emit-d3 handler does the layout;
-  // this handler only releases the KK floor.
-  if (reheatButton) {
-    reheatButton.addEventListener("click", () => {
-      if (snapshotFloor !== null) clearSnapshot();
-    });
-  }
-
   // Changing alpha/beta rebuilds the Z landscape, so a KK snapshot made under
-  // the previous landscape is no longer a valid anchor.
+  // the previous landscape is no longer a valid anchor. Restore the ordinary
+  // coordinates and release the snapshot floor.
   globalThis.addEventListener("emit-weight-change", () => {
-    if (snapshotFloor !== null) clearSnapshot();
+    if (snapshotFloor !== null) clearSnapshot({ restorePositions: true });
   });
 
   globalThis.emitKKSnapshot = Object.freeze({
