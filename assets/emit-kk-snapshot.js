@@ -64,14 +64,27 @@
     setButtonState(true);
   }
 
+  function elementIsVisible(element) {
+    if (!element) return false;
+    if (element.classList.contains("is-hidden")) return false;
+    if (element.style.opacity === "0") return false;
+    return true;
+  }
+
   function visibleSubgraph(threshold) {
-    const links = graph.links.filter((link) => Number(link.z) >= threshold);
+    const links = graph.links.filter((link) => {
+      if (Number(link.z) < threshold) return false;
+      return elementIsVisible(document.getElementById(link.element_id));
+    });
     const nodeIds = new Set();
     for (const link of links) {
       nodeIds.add(endpointId(link.source));
       nodeIds.add(endpointId(link.target));
     }
-    const nodes = graph.nodes.filter((node) => nodeIds.has(node.id));
+    const nodes = graph.nodes.filter((node) => {
+      if (!nodeIds.has(node.id)) return false;
+      return elementIsVisible(document.getElementById(node.element_id));
+    });
     return { nodes, links };
   }
 
@@ -154,6 +167,7 @@
         },
       }));
     } finally {
+      running = false;
       slider.disabled = false;
       button.disabled = false;
     }
@@ -163,7 +177,7 @@
     void makeSnapshot();
   });
 
-  // Reset Z is now deliberately a full viewer reset. Moving the Z slider is
+  // Reset Z is deliberately a full viewer reset. Moving the Z slider is
   // sufficient for ordinary threshold changes; Reset means "start over".
   if (resetButton) {
     resetButton.addEventListener("click", (event) => {
