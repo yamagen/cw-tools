@@ -1,5 +1,5 @@
 {
-  "layout": "kamada-kawai",
+  "layout": "force",
   "layout_options": {
     "overlap": false,
     "edge_length": 36
