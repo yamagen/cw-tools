@@ -57,12 +57,12 @@ inspected directly with `head`, `grep`, `awk`, `sort`, or `lv`.
 
 ## Current development snapshot
 
-| Program | Status | Responsibility |
-| ------- | ------ | -------------- |
-| `pair` | implemented | generate token pairs and preserve per-unit token frequency |
-| `cw` | implemented | project patterns, calculate global/local statistics, CW, and Z |
-| `emit` | implemented | serialize graphs, JavaScript data, and publication tables |
-| `cm` | experimental | connect adjacent two-token relations into chains |
+| Program | Status       | Responsibility                                                 |
+| ------- | ------------ | -------------------------------------------------------------- |
+| `pair`  | implemented  | generate token pairs and preserve per-unit token frequency     |
+| `cw`    | implemented  | project patterns, calculate global/local statistics, CW, and Z |
+| `emit`  | implemented  | serialize graphs, JavaScript data, and publication tables      |
+| `cm`    | experimental | connect adjacent two-token relations into chains               |
 
 Record the version of every program used in an analysis. Method numbers and
 command-line options should also be written explicitly even when a default
@@ -493,12 +493,12 @@ missing-IDF error instead of silently mixing incompatible statistics.
 
 `cw` implements four historical and explanatory methods:
 
-| Method | Main purpose |
-| -----: | ------------ |
-| `1` | compact explanation of the basic CW principle |
-| `7` | historical waka-graph weighting; current default |
-| `12` | experimental weighting of locally rare patterns |
-| `16` | global pair rarity × global token weight × local repetition |
+| Method | Main purpose                                                |
+| -----: | ----------------------------------------------------------- |
+|    `1` | compact explanation of the basic CW principle               |
+|    `7` | historical waka-graph weighting; current default            |
+|   `12` | experimental weighting of locally rare patterns             |
+|   `16` | global pair rarity × global token weight × local repetition |
 
 Specify the method explicitly:
 
@@ -530,21 +530,21 @@ convenient when comparing distributions produced by different methods.
 token1 token2 ctf cdf df1 idf1 fq1 df2 idf2 fq2 cw z unit_id...
 ```
 
-| Column | Name | Meaning |
-| -----: | ---- | ------- |
-| 1 | `token1` | representative complete token for pattern 1 |
-| 2 | `token2` | representative complete token for pattern 2 |
-| 3 | `ctf` | retained local pair frequency |
-| 4 | `cdf` | selected-unit frequency of the pair |
-| 5 | `df1` | global unit frequency of pattern 1 |
-| 6 | `idf1` | global IDF of pattern 1 |
-| 7 | `fq1` | local occurrence frequency of pattern 1 |
-| 8 | `df2` | global unit frequency of pattern 2 |
-| 9 | `idf2` | global IDF of pattern 2 |
-| 10 | `fq2` | local occurrence frequency of pattern 2 |
-| 11 | `cw` | CW under the selected method |
-| 12 | `z` | Z within the selected CW distribution |
-| 13... | `unit_id...` | selected units containing the pair |
+| Column | Name         | Meaning                                     |
+| -----: | ------------ | ------------------------------------------- |
+|      1 | `token1`     | representative complete token for pattern 1 |
+|      2 | `token2`     | representative complete token for pattern 2 |
+|      3 | `ctf`        | retained local pair frequency               |
+|      4 | `cdf`        | selected-unit frequency of the pair         |
+|      5 | `df1`        | global unit frequency of pattern 1          |
+|      6 | `idf1`       | global IDF of pattern 1                     |
+|      7 | `fq1`        | local occurrence frequency of pattern 1     |
+|      8 | `df2`        | global unit frequency of pattern 2          |
+|      9 | `idf2`       | global IDF of pattern 2                     |
+|     10 | `fq2`        | local occurrence frequency of pattern 2     |
+|     11 | `cw`         | CW under the selected method                |
+|     12 | `z`          | Z within the selected CW distribution       |
+|  13... | `unit_id...` | selected units containing the pair          |
 
 See [`docs/man-cw.md`](docs/man-cw.md) for formulas and the complete option
 reference.
@@ -904,8 +904,8 @@ fields are optional.
 - [`docs/man-cw.md`](docs/man-cw.md) — pattern projection, reference sets,
   formulas, methods, output columns, and Z values;
 - [`docs/man-emit.md`](docs/man-emit.md) — graph and table output;
-- [`docs/emit-d3.md`](docs/emit-d3.md) — D3 data, layout, and Z-threshold
-  interaction;
+- [`docs/emit-d3.md`](docs/emit-d3.md) — D3 data, layout, and Z-threshold interaction;
+- [`docs/emit-kk.md`](docs/emit-kk.md) — Kamada–Kawai snapshot workflow, Z-filtration observation, bud–petal structure, and source-text validation;
 - [`docs/emit-svg.md`](docs/emit-svg.md) — semantic Graphviz SVG styling;
 - [`docs/emit-url.md`](docs/emit-url.md) — edge URLs generated from unit IDs.
 
