@@ -2,7 +2,7 @@
   "layout": "force",
   "layout_options": {
     "overlap": false,
-    "edge_length": 36
+    "edge_length": 40
   },
   "source": {
     "path": "emit-texts.json",
