@@ -89,7 +89,7 @@
     simulation = d3.forceSimulation(subgraph.nodes)
       .force("link", d3.forceLink(subgraph.links).id((n) => n.id).distance((l) => { const m = Math.max(Number(l.source.degree ?? 0), Number(l.target.degree ?? 0)); return m >= 12 ? 50 : m >= 3 ? 30 : 10; }))
       .force("charge", d3.forceManyBody().strength(-50))
-      .force("x", d3.forceX(width / 1.4).strength(0.02))
+      .force("x", d3.forceX(width / 2).strength(0.02))
       .force("y", d3.forceY(height / 2).strength(0.04))
       .alpha(1).on("tick", renderPositions).on("end", () => {
         for (const node of subgraph.nodes) { node.fx = node.x; node.fy = node.y; }
