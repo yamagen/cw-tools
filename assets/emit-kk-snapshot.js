@@ -40,9 +40,7 @@
 
   function setButtonState(active) {
     button.setAttribute("aria-pressed", active ? "true" : "false");
-    button.textContent = active && snapshotFloor !== null
-      ? `KK · Z≥${formatThreshold(snapshotFloor)}`
-      : "KK";
+    button.textContent = "KK";
   }
 
   function restoreSliderMinimum() {
