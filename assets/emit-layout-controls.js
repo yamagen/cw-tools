@@ -9,6 +9,7 @@
   const bfsButton = document.getElementById("emit-bfs");
   const buttonRow = document.getElementById("emit-button-row");
   const summary = document.getElementById("emit-control-summary");
+  const weightState = document.getElementById("emit-weight-state");
   const svgElement = document.querySelector("#emit-graph, #graph");
   if (!kkButton || !bfsButton || !buttonRow || !svgElement) return;
 
@@ -23,12 +24,20 @@
     buttonRow.insertBefore(forceButton, kkButton);
   }
 
+  // Put the weight summary and top node on the same second summary row.
+  if (summary && weightState) {
+    weightState.style.gridColumn = "1";
+    weightState.style.gridRow = "2";
+    summary.appendChild(weightState);
+  }
+
   let topOutput = document.getElementById("emit-top-node");
   if (!topOutput && summary) {
     topOutput = document.createElement("output");
     topOutput.id = "emit-top-node";
     topOutput.setAttribute("aria-live", "polite");
-    topOutput.style.gridColumn = "1 / -1";
+    topOutput.style.gridColumn = "2";
+    topOutput.style.gridRow = "2";
     topOutput.style.fontSize = "0.78rem";
     topOutput.style.color = "#666";
     topOutput.style.textAlign = "right";
