@@ -168,6 +168,55 @@ For example, in observations centered on `梅`, one petal contains relations inv
 
 This source-text check is essential. A visible petal is a **candidate structural unit** until its lexical relations are traced back to one or more actual texts. When a petal corresponds to one waka, or to several waka sharing a semantic or thematic relation, the network structure has an independently inspectable textual basis.
 
+## Core-node pruning
+
+After a bud–petal structure has been identified, the central bud may be
+removed interactively and `KK` run again on the remaining visible graph.
+This provides a second observational operation: **core-node pruning**.
+
+The purpose is not merely to remove a visually dominant node. If several
+petals were attached principally through the bud, removing that node can
+expose the internal organization of the remaining branches and separate
+them into locally coherent components or substructures.
+
+```text
+bud–petal snapshot
+        |
+        v
+remove the bud
+        |
+        v
+remove newly isolated nodes
+        |
+        v
+run KK again
+        |
+        v
+inspect surviving structures
+        |
+        v
+check their source texts
+```
+
+A surviving structure is treated as an episode candidate, not as an
+episode by definition. Its interpretation must still be checked against
+the source texts.
+
+This operation is especially useful for asking whether an apparent petal
+has structure of its own. If removal of the central lexical node leaves a
+coherent connected structure, the petal is not merely a set of independent
+neighbors radiating from the bud. It contains relations among its remaining
+nodes that can be inspected independently.
+
+Core-node pruning and Z filtration should therefore be distinguished:
+
+Z filtration removes relations according to the calculated edge threshold.
+core-node pruning removes a selected lexical center in order to inspect
+the organization that remains.
+
+Used together with KK snapshots and source-text inspection, these operations
+provide complementary views of the same emitted lexical network.
+
 ## Petal emergence under Z filtration
 
 The Z slider makes the temporal order of observation particularly useful. Begin with a high threshold and lower it gradually in the ordinary force view. Strong central relations survive first; additional branches and local clusters appear as weaker edges are admitted.
