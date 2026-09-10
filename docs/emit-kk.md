@@ -40,12 +40,95 @@ The historical D3 force view is useful precisely because it is fast and continuo
 
 Kamada–Kawai is slower because it uses all-pairs shortest-path relations and iteratively minimizes a global spring-energy objective. It should therefore be treated as a requested structural snapshot rather than as an animation that is recomputed continuously.
 
-In short:
+The current viewer also provides explicit `Force` and `BFS` operations. These are not fallback renderers or cosmetic alternatives to KK. They are complementary observation geometries applied to the same filtered graph.
 
 ```text
-force = explore
-KK    = inspect
+Force = recompute local force equilibrium on the visible graph
+KK    = inspect all-pairs shortest-path geometry and branch structure
+BFS   = inspect breadth/depth layers from the visible top node
 ```
+
+No one layout is assumed to be globally superior. A structure that persists across layouts is especially useful evidence; a structure that becomes clear only under one layout can reveal what that geometry is particularly good at exposing.
+
+## Force after filtration
+
+The `Force` button reheats the force-directed layout using only the currently visible subgraph. This differs from merely filtering an already computed full-graph layout.
+
+```text
+Z filtration
+    |
+    v
+visible subgraph
+    |
+    v
+Force
+    |
+    v
+new local equilibrium
+```
+
+At some intermediate Z thresholds this recomputation separates local subclusters more clearly than KK. In source-text inspection, some of these subclusters correspond to individual waka or to small groups of textually related waka. The force calculation itself contains no episode or poem labels; the correspondence is an observation made after tracing the visible relations back to the source text.
+
+## BFS radial observation
+
+The `BFS` operation chooses the highest-degree node in the currently visible graph (with deterministic tie-breaking), computes breadth-first graph distance from that node, and places successive distance layers on increasing radial bands. The retrieval key and the structural center are deliberately kept distinct: a word used to retrieve a lexical world need not be its highest-degree visible node.
+
+The radial geometry makes a two-layer organization particularly easy to inspect. For a BFS root `q`, define
+
+$$
+L_1(q)=\{v\mid d(q,v)=1\},
+$$
+
+and
+
+$$
+L_2(q)=\{v\mid d(q,v)=2\}.
+$$
+
+In observations of the Kokinshu data, the inner and outer layers have repeatedly supported a useful textual reading:
+
+```text
+L1  topic-direct relations
+L2  episode-mediated relations
+```
+
+This is an empirical observation, not a semantic rule built into BFS. BFS calculates graph distance only. The interpretation must be tested against the source texts.
+
+The distinction first became conspicuous in observations around `鶯`. The inner layer contained words directly organizing the warbler topic, while the outer layer separated into locally coherent groups when the dominant center was interactively pruned and BFS was recomputed. Source-text inspection identified, among others, a spring-arrival group organized around a warbler coming to a branch and a plum-blossom-hat group involving `梅`, `笠`, `縫ふ`, and related words.
+
+Comparable two-layer organization was subsequently observed with other keys, including `時鳥`, `立田`, and `吉野`. These cases are important because they show that the `鶯` result is not being treated as sufficient evidence for a general rule. The lexical membership and textual basis of each layer must still be inspected independently.
+
+The `吉野` observation supplied a further useful case: a local cluster in the mediated region could be traced to a single choka. A sufficiently long textual unit can therefore generate enough internal relational structure to appear as a local cluster by itself. This suggests that the outer layer should not be equated narrowly with a semantic topic. It can expose **textually mediated local structure**, whose source may be one long poem, several short poems, or another recurrent textual episode.
+
+## Prune and redraw
+
+Interactive node/edge removal is not only a decluttering operation. Recomputing a layout after pruning can expose structure that was geometrically dominated by a highly connected center.
+
+For BFS, the useful observational sequence is:
+
+```text
+filtered graph
+    |
+    v
+BFS radial view
+    |
+    v
+inspect direct and mediated layers
+    |
+    v
+prune a dominant node or relation
+    |
+    v
+BFS again on the remaining graph
+    |
+    v
+inspect newly separated local clusters
+    |
+    v
+source-text verification
+```
+
+The redraw does not discover literary episodes by itself. It re-geometrizes the remaining relational structure so that a human observer can inspect candidate units that were previously difficult to see.
 
 ## Bud–petal structure
 
@@ -115,30 +198,45 @@ Kamada–Kawai assigns ideal geometric distances from graph-theoretic shortest-p
 
 The geometry should not itself be interpreted as semantics. KK is used here because it can expose graph-distance organization and relatively independent branches more clearly than a continuously moving force simulation. Semantic or thematic claims should be made only after checking the source-text panel.
 
+## Layout as an observation operator
+
+The three layouts are best treated as different observation operators over the same filtered relational network:
+
+```text
+Z / alpha / beta    determine what remains visible
+Force / KK / BFS    determine the geometry from which it is observed
+source text         determines whether a literary interpretation is supported
+```
+
+This makes layout selection methodological rather than decorative. Force can make local equilibrium and subclusters conspicuous; KK can make tree-like branches and shortest-path organization conspicuous; BFS can make graph-distance layers and mediated local structures conspicuous. The observer should compare them rather than assume that one drawing is the network itself.
+
 ## Practical interpretation rule
 
-The intended chain of evidence is:
+The intended chain of evidence is now broader than KK alone:
 
 ```text
 cw / emitted relations
         |
         v
-Z filtration
+Z / alpha / beta filtration
         |
         v
 candidate structural transition
         |
-        v
-KK snapshot
+        +----> Force: local equilibrium / subclusters
+        |
+        +----> KK: shortest-path branches
+        |
+        +----> BFS: direct and mediated distance layers
         |
         v
-bud-petal candidate
+optional pruning and redraw
         |
         v
 source-text inspection
         |
         v
-textually supported episode / theme
+textually supported episode / theme / textual unit
 ```
 
-Thus KK does not validate the network by producing an attractive layout. It supports an observational procedure in which a mathematically derived relational structure is compared with the textual phenomena from which the network was calculated.
+Thus no layout validates the network by producing an attractive picture. The viewer supports an observational procedure in which mathematically derived relational structures are repeatedly drawn, inspected, pruned, redrawn, and compared with the textual phenomena from which the network was calculated.
