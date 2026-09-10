@@ -67,6 +67,9 @@ $params = [
         color: #555;
         min-height: 1.2em;
       }
+      #emit-button-row {
+        grid-template-columns: repeat(4, 1fr);
+      }
       @media (max-width: 46rem) {
         #emit-query-panel {
           left: 0.4rem;
