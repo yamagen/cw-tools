@@ -112,7 +112,7 @@
     const height = svgElement.clientHeight || 720;
     const cx = width / 2;
     const cy = height / 2;
-    const ring = 48;
+    const ring = 64;
 
     for (const node of subgraph.nodes) {
       node.fx = null;
