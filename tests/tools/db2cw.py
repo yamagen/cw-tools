@@ -10,7 +10,7 @@ def parse_args():
     ap = argparse.ArgumentParser(
         description=(
             "Generate cw-tools input from all-v02-21daishu.db. "
-            "For the selected anthologies, use A00/B00 records (the tokenization layer), "
+            "For the selected anthologies, use A00/B00/D00 top-level records (the non-split layer), "
             "and emit surface/lemma/class/reading/BG-code."
         )
     )
@@ -51,11 +51,16 @@ def main():
             if not (args.first_anthology <= anthology <= args.last_anthology):
                 continue
 
-            # A00 = ordinary token; B00 = unsegmented compound token.
-            # C/D/E records are alternative segmentation layers and are not emitted here.
-            if layer not in {"A00", "B00"}:
+            # A00 = ordinary token; B00 = unsplit B/C compound; D00 = unsplit D/E unit.
+            # C/E child records are alternative split layers and are not emitted here.
+            if layer not in {"A00", "B00", "D00"}:
                 skipped_other_layers += 1
                 continue
+
+            if cls == "77":
+                continue
+
+            surface = surface.replace("〈", "").replace("〉", "")
 
             # Keep the source DB's surface and surface reading.  The third field is the
             # source 2-digit class code; it is deliberately not converted to the old

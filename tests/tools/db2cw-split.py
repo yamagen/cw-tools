@@ -55,6 +55,11 @@ def main():
             if not (args.first_anthology <= anthology <= args.last_anthology):
                 continue
 
+            if cls == "77":
+                continue
+
+            surface = surface.replace("〈", "").replace("〉", "")
+
             locations.setdefault((anthology, poem, token), []).append(
                 (layer, bg, cls, surface, lemma, reading)
             )

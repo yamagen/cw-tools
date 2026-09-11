@@ -1,3 +1,4 @@
+#!/usr/bin/awk -f
 # Generate unit_id -> source-text JSON from all-v02-21daishu.db.
 #
 # Usage:
@@ -10,9 +11,9 @@
 #     "10002": {"surface": "..."}
 #   }
 #
-# The source surface is reconstructed from the non-split records used by
-# db2cw.awk: A00 for ordinary tokens and B00 for unsplit compound tokens.
-# C/D/E child records and POS 77 annotation/symbol records are ignored.
+# Reconstruct the non-split surface from the same top-level records used by
+# db2cw.awk: A00 ordinary tokens, B00 B/C compounds, and D00 D/E units.
+# C/E child records and POS 77 annotation/symbol records are ignored.
 
 function clean_surface(s) {
     gsub(/[〈〉]/, "", s)
@@ -48,7 +49,7 @@ BEGIN {
 }
 
 $1 ~ /^Not/ { next }
-$2 != "A00" && $2 != "B00" { next }
+$2 != "A00" && $2 != "B00" && $2 != "D00" { next }
 $4 == "77" { next }
 
 {

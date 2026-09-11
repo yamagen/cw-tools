@@ -1,4 +1,10 @@
-# awk -f db2cw.awk all-v02-21daishu.db > hachidaishu-bg.txt
+#!/usr/bin/awk -f
+## awk -f db2cw.awk all-v02-21daishu.db > hachidaishu-bg.txt
+#
+# Non-split cw input:
+#   A00 = ordinary token
+#   B00 = unsplit B/C compound
+#   D00 = unsplit D/E unit (e.g. proper-name compound)
 
 BEGIN {
     OFS = " "
@@ -15,7 +21,7 @@ $4 == "77" { next }
     if (anthology < 1 || anthology > 8)
         next
 
-    if ($2 != "A00" && $2 != "B00")
+    if ($2 != "A00" && $2 != "B00" && $2 != "D00")
         next
 
     song_id = sprintf("%d%04d", anthology, poem)
@@ -23,10 +29,10 @@ $4 == "77" { next }
     surface = $5
     gsub(/[〈〉]/, "", surface)
 
-token = surface "/" $6 "/" $4 "/" $9 "/" $3
+    token = surface "/" $6 "/" $4 "/" $9 "/" $3
 
     if (song_id != prev) {
-        if (NR > 1 && prev != "")
+        if (prev != "")
             printf "\n"
         printf "%s %s", song_id, token
         prev = song_id
