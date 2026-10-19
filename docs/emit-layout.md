@@ -75,3 +75,21 @@ source-text inspection
 ```
 
 This keeps the mathematical weighting, network topology, drawing geometry, and textual interpretation distinct while allowing the observer to move repeatedly among them.
+
+
+## Statistical reproducibility boundary
+
+Force and BFS are observation geometries. They are not part of the statistical definition of a cw result. In the dynamic cw-suite viewer, the `Request` button exposes the shell pipeline through `cw` that generated the current statistical rows. That command can be copied into a terminal and rerun from a clone of the repository.
+
+```text
+corpus -> pair -> cw
+                    statistical reproducibility boundary
+                         |
+                         +--> emit -> D3 / Force / BFS
+                         +--> Graphviz
+                         +--> p5.js
+                         +--> spreadsheet
+                         +--> researcher-defined processing
+```
+
+This separation means that a researcher does not need to reproduce the D3 layout in order to reproduce or reuse the underlying measurements. Layout, filtering for visual inspection, and source-text navigation remain downstream observation choices.

@@ -1,6 +1,6 @@
 # cw-tools: Transparent Unix Filters for Exploratory Text Analysis
 
-Last updated: 2026/09/05.
+Last updated: 2026/10/19.
 
 <p align="center">
   <img src="docs/images/cw-tools-social-preview.png"
@@ -68,7 +68,7 @@ Record the version of every program used in an analysis. Method numbers and
 command-line options should also be written explicitly even when a default
 exists.
 
-## Interactive α–β observation snapshot (2026-09-05)
+## Interactive α–β observation snapshot
 
 The development branch `feature/alpha-beta-observation` adds a browser-side
 observation layer for continuously inspecting the Method-16 components rather
@@ -205,6 +205,32 @@ mechanism.
 These browser tools are observational. `cw` remains responsible for supplying
 the statistical ingredients, while `emit`/D3 remain responsible for display,
 interaction, and browser-side recomputation.
+
+### Request: reproducible statistical pipeline
+
+The dynamic cw-suite viewer keeps the statistical calculation separate from the browser observation layer. The `Request` button shows the shell pipeline that produced the current statistical data, stopping deliberately at `cw`.
+
+```sh
+grep '^1' tests/data/hachidaishu-bg-split.txt \
+  | ./pair \
+  | ./cw -p 5 --substr 16 -M 16 -f '梅' \
+      --idf-in tests/data/hachidaishu-bg-16-split.idf
+```
+
+The displayed command is intended to be copied directly into a terminal from a clone of this repository. It records the corpus subset, pair generation, computational identity, semantic-code level, CW method, key selection, and IDF reference needed to regenerate the statistical rows.
+
+The boundary is intentional:
+
+```text
+corpus -> pair -> cw       reproducible statistical data
+                    |
+                    +--> D3 / Graphviz / p5.js / spreadsheet / other tools
+```
+
+`emit` is not included in the Request command because it belongs to the downstream representation layer. Researchers may take the same `cw` rows and make their own tables, figures, networks, filters, or further analyses without reproducing the cw-suite browser display.
+
+The same principle is not specific to Hachidaishu. Any suitably tokenized corpus can pass through `pair` and `cw`; the repository includes Japanese and English examples. This makes the statistical procedure reusable across corpora while leaving visualization and presentation choices to the researcher.
+
 
 ## Input data
 
@@ -817,6 +843,9 @@ awk -F '\t' '{print $12}' result.tsv | rbin -c
 ```
 
 ## Reproducible research record
+
+The primary reproducibility boundary is the statistical pipeline through `cw`. The dynamic viewer's `Request` button exposes that pipeline directly so that it can be copied into a terminal and rerun independently of D3 or any other visualization system. `emit` configuration and browser observation settings should still be recorded when the goal is to reproduce a particular published figure, but they are not required to reproduce the underlying statistical rows.
+
 
 A reproducible analysis should preserve at least:
 

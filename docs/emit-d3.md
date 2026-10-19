@@ -306,3 +306,10 @@ visible. Move it to the right to retain progressively higher-Z edges while the
 node positions remain fixed. Use `Retention` to compare edge volume and node
 coverage at the same thresholds. Double-click individual nodes when manual
 pruning is useful; reload the page to restore the unpruned viewer state.
+
+
+## Dynamic cw-suite and the Request command
+
+The PHP-based dynamic viewer under `templates/` adds a reproducibility control named `Request`. It displays the actual shell pipeline through `cw` for the current query. The command deliberately stops before `emit`: its purpose is to regenerate the statistical data, not to prescribe a visualization.
+
+Once those cw rows have been reproduced, they may be rendered with D3, Graphviz, p5.js, a spreadsheet, or any other suitable downstream tool. The current Z, alpha, beta, Force, and BFS controls belong to browser-side observation. They can be recorded when reproducing a particular view, but they are conceptually separate from the Request command that records how the statistical input to the viewer was produced.

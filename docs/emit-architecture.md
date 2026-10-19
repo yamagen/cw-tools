@@ -9,7 +9,10 @@ For command-line behavior and configuration, see [man-emit.md](./man-emit.md).
 ## Core principle
 
 `cw` measures; `emit` interprets measurements for output; CSS and JavaScript
-control presentation and interaction.
+control presentation and interaction. The dynamic viewer's `Request` command
+makes this boundary operational: it records the reproducible shell pipeline
+through `cw`, while leaving `emit` and the downstream renderer as independent
+presentation choices.
 
 ```text
 pair -> cw -> optional row or graph organization -> emit -> target renderer
@@ -265,3 +268,10 @@ layout               Graphviz or D3
 
 A new feature should be placed in the lowest layer that can implement it without
 absorbing responsibilities from another layer.
+
+
+## Reproducibility and renderer independence
+
+For the dynamic cw-suite viewer, reproducibility of the statistical data ends at the `cw` output. The `Request` control therefore reports a copy-and-paste shell pipeline through `corpus -> pair -> cw`, rather than a command tied to one renderer.
+
+This is deliberate. The same measured rows may be passed to `emit` for D3 or Graphviz output, imported into a spreadsheet, or consumed by another researcher-defined renderer or analysis program. Reproducing a particular published figure may additionally require its `emit`, layout, Z, alpha, and beta settings; reproducing the underlying statistical data does not.
