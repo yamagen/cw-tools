@@ -905,7 +905,6 @@ fields are optional.
   formulas, methods, output columns, and Z values;
 - [`docs/man-emit.md`](docs/man-emit.md) — graph and table output;
 - [`docs/emit-d3.md`](docs/emit-d3.md) — D3 data, layout, and Z-threshold interaction;
-- [`docs/emit-kk.md`](docs/emit-kk.md) — Kamada–Kawai snapshot workflow, Z-filtration observation, bud–petal structure, and source-text validation;
 - [`docs/emit-svg.md`](docs/emit-svg.md) — semantic Graphviz SVG styling;
 - [`docs/emit-url.md`](docs/emit-url.md) — edge URLs generated from unit IDs.
 

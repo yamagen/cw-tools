@@ -106,7 +106,6 @@ $params = [
         </div>
         <div id="emit-button-row">
           <button id="emit-z-reset">Reset Z</button>
-          <button id="emit-kk" type="button" aria-pressed="false" title="Recompute Kamada-Kawai for the currently visible Z-filtered graph">KK</button>
           <button id="emit-bfs" type="button" aria-pressed="false" title="Experimental BFS-depth radial force layout for the currently visible graph">BFS</button>
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
@@ -243,13 +242,11 @@ $params = [
           globalThis.emitData = graph;
           statusElement.textContent = `${graph.nodes.length} nodes · ${graph.links.length} edges`;
 
-          await loadScript("../assets/emit-layout-kamada-kawai.js");
           await loadScript("../assets/emit-d3.js");
           await loadScript("../assets/emit-node-scale.js");
           await loadScript("../assets/emit-interaction.js");
           await loadScript("../assets/emit-slider.js");
           await loadScript("../assets/emit-weight.js");
-          await loadScript("../assets/emit-kk-snapshot.js");
           await loadScript("../assets/emit-bfs-radial.js");
           await loadScript("../assets/emit-retention.js");
           await loadScript("../assets/emit-pos.js");

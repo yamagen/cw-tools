@@ -5,13 +5,12 @@
   const graph = globalThis.emitGraph;
   if (!d3 || !graph) throw new Error("emit-layout-controls.js requires d3 and emit-d3.js first");
 
-  const kkButton = document.getElementById("emit-kk");
   const bfsButton = document.getElementById("emit-bfs");
   const buttonRow = document.getElementById("emit-button-row");
   const summary = document.getElementById("emit-control-summary");
   const weightState = document.getElementById("emit-weight-state");
   const svgElement = document.querySelector("#emit-graph, #graph");
-  if (!kkButton || !bfsButton || !buttonRow || !svgElement) return;
+  if (!bfsButton || !buttonRow || !svgElement) return;
 
   let forceButton = document.getElementById("emit-force");
   if (!forceButton) {
@@ -21,7 +20,7 @@
     forceButton.textContent = "Force";
     forceButton.title = "Reheat the force-directed layout for the currently visible graph";
     forceButton.setAttribute("aria-pressed", "false");
-    buttonRow.insertBefore(forceButton, kkButton);
+    buttonRow.insertBefore(forceButton, bfsButton);
   }
 
   // Put the weight summary and top node on the same second summary row.
@@ -76,7 +75,7 @@
   }
 
   function setActive(name) {
-    for (const [key, button] of [["force", forceButton], ["kk", kkButton], ["bfs", bfsButton]]) {
+    for (const [key, button] of [["force", forceButton], ["bfs", bfsButton]]) {
       button.setAttribute("aria-pressed", key === name ? "true" : "false");
     }
   }
@@ -108,7 +107,6 @@
   }
 
   forceButton.addEventListener("click", runForce);
-  globalThis.addEventListener("emit-kk-snapshot", () => { setActive("kk"); updateTopNode(); });
   globalThis.addEventListener("emit-bfs-layout", () => { setActive("bfs"); updateTopNode(); });
   globalThis.addEventListener("emit-weight-change", () => { setActive(null); updateTopNode(); });
   globalThis.addEventListener("emit-layout-ready", (event) => { if (event.detail?.layout === "force") setActive("force"); updateTopNode(); });

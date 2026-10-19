@@ -390,34 +390,8 @@
       });
   }
 
-  async function startKamadaKawai(options = {}) {
-    stopCurrentLayout();
-    activeLayout = "kamada-kawai";
-    const token = layoutRunToken;
-    const engine = globalThis.emitLayouts?.kamadaKawai;
-
-    if (typeof engine !== "function") {
-      console.warn("Kamada-Kawai layout engine is unavailable; falling back to force layout");
-      startForceLayout(options);
-      return;
-    }
-
-    const result = await engine(nodes, links, {
-      width: width(),
-      height: height(),
-      ...options,
-    });
-    if (token !== layoutRunToken || activeLayout !== "kamada-kawai") return;
-    ticked();
-    dispatchLayoutReady({ result });
-  }
-
   function runLayout(config = viewConfig) {
     const layout = normalizeLayout(config);
-    const type = String(layout.type || "force").toLowerCase();
-    if (type === "kamada-kawai" || type === "kamada_kawai" || type === "kk") {
-      return startKamadaKawai(layout.options);
-    }
     startForceLayout(layout.options);
     return Promise.resolve();
   }

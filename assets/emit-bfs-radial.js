@@ -82,8 +82,8 @@
   globalThis.addEventListener("emit-weight-change", () => button.setAttribute("aria-pressed", "false"));
   globalThis.emitBFSRadial = Object.freeze({ run });
 
-  // This viewer loads BFS last among the three layout modules, so attach the
-  // shared Force/KK/BFS controls here without requiring another template edit.
+  // This viewer loads BFS after the base force layout, so attach the
+  // shared Force/BFS controls here without requiring another template edit.
   if (!globalThis.emitLayoutControls && !document.querySelector('script[data-emit-layout-controls]')) {
     const script = document.createElement("script");
     script.src = "../assets/emit-layout-controls.js";

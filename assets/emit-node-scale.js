@@ -18,7 +18,6 @@
 
   applyNodeScale();
   globalThis.addEventListener("emit-layout-ready", applyNodeScale);
-  globalThis.addEventListener("emit-kk-snapshot", applyNodeScale);
 
   globalThis.emitNodeScale = Object.freeze({
     apply: applyNodeScale,
