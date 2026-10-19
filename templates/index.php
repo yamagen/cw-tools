@@ -210,7 +210,7 @@ $params = [
         new ResizeObserver(positionQueryPanel).observe(controlsPanel);
       }
 
-      commandPanel.textContent = JSON.stringify(request, null, 2);
+      commandPanel.textContent = "Loading reproducible command…";
       commandButton.addEventListener("click", () => {
         commandPanel.hidden = !commandPanel.hidden;
         positionQueryPanel();
@@ -239,6 +239,7 @@ $params = [
             throw new Error(graph.error || `HTTP ${response.status}`);
           }
 
+          commandPanel.textContent = graph.request_command || "Reproducible command unavailable";
           globalThis.emitData = graph;
           statusElement.textContent = `${graph.nodes.length} nodes · ${graph.links.length} edges`;
 

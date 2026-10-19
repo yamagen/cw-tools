@@ -85,6 +85,40 @@ if ($mode === 'free') {
 $cwArgs[] = '--idf-in';
 $cwArgs[] = escapeshellarg($idf);
 
+function display_path(string $path, string $root): string
+{
+    $prefix = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    if (str_starts_with($path, $prefix)) {
+        return substr($path, strlen($prefix));
+    }
+    return $path;
+}
+
+$displayCorpus = display_path($corpus, $root);
+$displayIdf = display_path($idf, $root);
+$displayCwArgs = [
+    './cw',
+    '-p', (string)$p,
+    '--substr', (string)$substr,
+    '-M', (string)$max,
+];
+
+if ($mode === 'free') {
+    $displayCwArgs[] = '-f';
+    $displayCwArgs[] = escapeshellarg($key);
+} elseif ($mode === 'exact') {
+    $displayCwArgs[] = '-k';
+    $displayCwArgs[] = escapeshellarg($key);
+}
+
+$displayCwArgs[] = '--idf-in';
+$displayCwArgs[] = escapeshellarg($displayIdf);
+
+$requestCommand =
+    'grep ' . escapeshellarg('^1') . ' ' . escapeshellarg($displayCorpus) . " \\\n" .
+    '  | ./pair' . " \\\n" .
+    '  | ' . implode(' ', $displayCwArgs);
+
 $command =
     'grep ' . escapeshellarg('^1') . ' ' . escapeshellarg($corpus) .
     ' | ' . escapeshellarg($pair) .
@@ -124,5 +158,7 @@ $graph = json_decode($matches[1], true);
 if (!is_array($graph) || !isset($graph['nodes'], $graph['links'])) {
     fail_request(500, 'emit returned invalid graph data');
 }
+
+$graph['request_command'] = $requestCommand;
 
 echo json_encode($graph, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
