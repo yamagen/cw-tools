@@ -22,6 +22,7 @@ assets/emit-d3.js          reusable cw-tools renderer
 assets/emit-slider.js      reusable Z-threshold visibility controller
 assets/emit-interaction.js reusable browser interaction controller
 assets/emit-retention.js   reusable edge/node retention curve panel
+assets/emit-download-svg.js reusable current-view SVG exporter
 assets/emit-d3.css         reusable appearance rules
 assets/emit-retention.css  retention panel appearance rules
 templates/emit-d3.html     assembly template
@@ -286,6 +287,7 @@ node --check assets/emit-d3.js
 node --check assets/emit-interaction.js
 node --check assets/emit-slider.js
 node --check assets/emit-retention.js
+node --check assets/emit-download-svg.js
 ```
 
 Run the supplied static checks:
@@ -307,6 +309,36 @@ node positions remain fixed. Use `Retention` to compare edge volume and node
 coverage at the same thresholds. Double-click individual nodes when manual
 pruning is useful; reload the page to restore the unpruned viewer state.
 
+
+## Export the current graph as SVG
+
+Both the dynamic cw-suite viewer and the external D3 template provide an
+`SVG` button. The button exports the existing `#emit-graph` element as a
+standalone SVG file.
+
+The export is a snapshot of the **current observation state**. It preserves
+the current Force or BFS geometry, zoom transform, Z/alpha/beta-dependent
+visibility, node labels, node sizes, and visible edge structure. It does not
+rerun the force simulation, recalculate CW or Z, or regenerate the graph from
+the source rows.
+
+Only graph-relevant styles are embedded in the saved file. Browser interaction
+styles such as hit areas and pointer-event rules are deliberately omitted, and
+the surrounding control panels are not part of the SVG. This keeps the saved
+file portable in ordinary SVG viewers and suitable as a vector source for
+publication figures.
+
+The responsibilities are therefore:
+
+```text
+Request   corpus -> pair -> cw reproducibility
+viewer    Z / alpha / beta / Force / BFS observation
+SVG       exact current graph view -> portable vector figure
+```
+
+A published SVG records a particular observation and presentation state. It
+does not replace the `Request` pipeline as the record of how the underlying
+statistical data were produced.
 
 ## Dynamic cw-suite and the Request command
 
