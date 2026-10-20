@@ -93,3 +93,24 @@ corpus -> pair -> cw
 ```
 
 This separation means that a researcher does not need to reproduce the D3 layout in order to reproduce or reuse the underlying measurements. Layout, filtering for visual inspection, and source-text navigation remain downstream observation choices.
+
+
+## SVG export and layout state
+
+The `SVG` control exports the graph as it is currently observed. In
+particular, it preserves the current Force or BFS geometry rather than
+recomputing a publication layout. The current filtration state is preserved as
+well, so a high-Z local structure can be exported without changing the
+underlying `cw` rows.
+
+This makes layout state explicit rather than conflating it with measurement:
+
+```text
+cw rows                 measurement
+Force / BFS + sliders   observation
+SVG export              recorded vector view
+```
+
+The exported SVG is therefore appropriate for recording a figure used in a
+paper, while the `Request` command remains the reproducible record of the
+statistical pipeline that supplied the graph.
