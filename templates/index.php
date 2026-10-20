@@ -252,6 +252,7 @@ $params = [
           await loadScript("../assets/emit-retention.js");
           await loadScript("../assets/emit-pos.js");
           await loadScript("../assets/emit-c-support.js");
+          await loadScript("../assets/emit-download-svg.js");
           positionQueryPanel();
         } catch (error) {
           statusElement.textContent = `Error: ${error.message}`;
