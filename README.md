@@ -1,6 +1,6 @@
 # cw-tools: Transparent Unix Filters for Exploratory Text Analysis
 
-Last updated: 2026/10/19.
+Last updated: 2026/10/20.
 
 <p align="center">
   <img src="docs/images/cw-tools-social-preview.png"
@@ -230,6 +230,28 @@ corpus -> pair -> cw       reproducible statistical data
 `emit` is not included in the Request command because it belongs to the downstream representation layer. Researchers may take the same `cw` rows and make their own tables, figures, networks, filters, or further analyses without reproducing the cw-suite browser display.
 
 The same principle is not specific to Hachidaishu. Any suitably tokenized corpus can pass through `pair` and `cw`; the repository includes Japanese and English examples. This makes the statistical procedure reusable across corpora while leaving visualization and presentation choices to the researcher.
+
+### SVG: export the current observation
+
+The dynamic cw-suite viewer also provides an `SVG` button. It exports the
+**currently displayed graph** as a standalone SVG file: the current Force or
+BFS geometry, the current Z/alpha/beta filtration state, and the currently
+visible nodes and edges are preserved. Browser controls and panels are not
+included in the exported figure.
+
+The export does not recalculate `cw`, Z, or the layout. It serializes the SVG
+that is already being observed and embeds only the graph styles needed for a
+portable vector figure. The result can therefore be used directly as a
+publication-quality vector source while remaining separate from the
+statistical reproducibility recorded by `Request`.
+
+```text
+Request   reproduce the statistical rows through cw
+SVG       preserve one observed browser view as a vector figure
+```
+
+This distinction is intentional: the measurements remain renderer-independent,
+while a particular observed state can be recorded and cited as a figure.
 
 
 ## Input data
