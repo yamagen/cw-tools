@@ -7,9 +7,9 @@
 
   const embeddedStyle = `
     .edge .edge-line { stroke: #000; stroke-width: 0.1; }
-    .edge .edge-hit { stroke: transparent; stroke-width: 12; pointer-events: stroke; }
-    .edge .edge-label { display: none; font-size: 6px; dominant-baseline: middle; }
-    .node text { pointer-events: none; }
+    .edge .edge-hit { display: none; }
+    .edge .edge-label { display: none; font-size: 6px; }
+
     #emit-arrow path { fill: #777; }
     .node.font-rank-0 text { opacity: 0.55; font-weight: 400; }
     .node.font-rank-1 text { opacity: 0.6; font-weight: 400; }
