@@ -275,3 +275,27 @@ absorbing responsibilities from another layer.
 For the dynamic cw-suite viewer, reproducibility of the statistical data ends at the `cw` output. The `Request` control therefore reports a copy-and-paste shell pipeline through `corpus -> pair -> cw`, rather than a command tied to one renderer.
 
 This is deliberate. The same measured rows may be passed to `emit` for D3 or Graphviz output, imported into a spreadsheet, or consumed by another researcher-defined renderer or analysis program. Reproducing a particular published figure may additionally require its `emit`, layout, Z, alpha, and beta settings; reproducing the underlying statistical data does not.
+
+
+## Current-view SVG export
+
+SVG export belongs to the presentation/observation layer, not the measurement
+layer. `assets/emit-download-svg.js` clones the already rendered
+`#emit-graph`, preserves its current layout and visibility state, embeds the
+minimal graph styles needed outside the browser, and serializes it as a
+standalone SVG file.
+
+It intentionally does **not** call `cw`, recalculate Z, restart Force/BFS, or
+change the underlying graph data. Browser controls, panels, and interaction
+hit areas are not part of the publication SVG.
+
+This gives the dynamic viewer two complementary records:
+
+```text
+Request -> reproducible statistical provenance through cw
+SVG     -> reproducible record of the particular observed vector figure
+```
+
+The SVG is therefore a figure artifact, while the `Request` pipeline remains
+the statistical provenance. Keeping these roles separate preserves renderer
+independence without losing the exact observation used in a paper.
