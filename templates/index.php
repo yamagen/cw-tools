@@ -110,7 +110,7 @@ $params = [
           <button id="emit-command-toggle">Request</button>
           <button id="emit-retention-toggle" type="button" aria-pressed="false">Retention</button>
           <button id="emit-pos-toggle" type="button" aria-pressed="false">POS</button>
-          <button id="emit-c-support-toggle" type="button" aria-pressed="false">C support</button>
+          <button id="emit-c-support-toggle" type="button" aria-pressed="false">C support</button>\n          <button id="emit-download-svg" type="button">Download SVG</button>
         </div>
       </div>
       <pre id="emit-command-panel" hidden></pre>
